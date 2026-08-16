@@ -737,7 +737,7 @@ async function getOrders(){
 
     total: Number(o.total),
 
-    notes: '',
+    notes: o.notes || '',
 
     status: o.status,
 
@@ -1194,6 +1194,9 @@ async function getOrders(){
 
     total:
       cartTotal(),
+
+    notes:
+      notes,
 
     status:
       'pendiente',
