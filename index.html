@@ -682,32 +682,62 @@
   }
 
 
-  async function getMenu(){
+async function getMenu(){
 
-    try{
+  const { data, error } =
+    await supabase
+      .from('menu_items')
+      .select('id, name, category, price')
+      .eq('active', true)
+      .order('id');
 
-      const r =
-        await window.storage.get('menu', true);
+  if(error){
 
-      return JSON.parse(r.value);
+    console.error(
+      'Error cargando menú:',
+      error
+    );
 
-    }catch(e){
+    return [];
 
-      try{
+  }
 
-        await window.storage.set(
-          'menu',
-          JSON.stringify(DEFAULT_MENU),
-          true
-        );
+  // Convertimos el formato de Supabase
+  // al formato que ya utiliza tu HTML.
 
-      }catch(e2){}
+  const categories = {};
 
-      return DEFAULT_MENU;
+  data.forEach(item => {
+
+    if(!categories[item.category]){
+
+      categories[item.category] = [];
 
     }
 
-  }
+    categories[item.category].push({
+
+      id: item.id,
+
+      name: item.name,
+
+      price: Number(item.price)
+
+    });
+
+  });
+
+
+  return Object.entries(categories)
+    .map(([cat, items]) => ({
+
+      cat,
+
+      items
+
+    }));
+
+}
 
 
 async function getOrders(){
@@ -746,7 +776,69 @@ async function getOrders(){
   }));
 
 }
+async function getOrder(orderId){
 
+  const token =
+    localStorage.getItem(
+      'order_token_' + orderId
+    );
+
+  if(!token){
+
+    console.error(
+      'No existe token para este pedido'
+    );
+
+    return null;
+
+  }
+
+  const { data, error } =
+    await supabase.rpc(
+      'get_order_by_token',
+      {
+        p_order_id: orderId,
+        p_access_token: token
+      }
+    );
+
+  if(error){
+
+    console.error(
+      'Error obteniendo pedido:',
+      error
+    );
+
+    return null;
+
+  }
+
+  if(!data || data.length === 0)
+    return null;
+
+  const o = data[0];
+
+  return {
+
+    id: o.id,
+
+    table: o.table_name,
+
+    tableId: o.table_id,
+
+    items: o.items,
+
+    total: Number(o.total),
+
+    notes: o.notes || '',
+
+    status: o.status,
+
+    createdAt: o.created_at
+
+  };
+
+}
 
   async function saveOrders(list){
 
@@ -1228,25 +1320,31 @@ async function getOrders(){
 
   }
 
-  const savedOrder = {
+const savedOrder = {
 
-    id: data.id,
+  id: data.id,
 
-    table: data.table_name,
+  table: data.table_name,
 
-    tableId: data.table_id,
+  tableId: data.table_id,
 
-    items: data.items,
+  items: data.items,
 
-    total: Number(data.total),
+  total: Number(data.total),
 
-    notes: notes,
+  notes: data.notes || '',
 
-    status: data.status,
+  status: data.status,
 
-    createdAt: data.created_at
+  createdAt: data.created_at,
 
-  };
+  accessToken: data.access_token
+
+};
+  localStorage.setItem(
+  'order_token_' + data.id,
+  data.access_token
+);
 
   lastOrderId =
     savedOrder.id;
@@ -1429,18 +1527,11 @@ async function getOrders(){
           }
 
 
-          const list =
-            await getOrders();
+const o =
+  await getOrder(orderId);
 
-
-          const o =
-            list.find(
-              x => x.id === orderId
-            );
-
-
-          if(o)
-            updateStatusPill(o.status);
+if(o)
+  updateStatusPill(o.status);
 
         },4000);
 
@@ -1455,282 +1546,454 @@ async function getOrders(){
   /* =========================================================
      STAFF
      ========================================================= */
+function renderStaffLogin(){
 
-  async function renderStaff(){
+  app.innerHTML = `
 
-    app.innerHTML = `
+    <div class="topbar">
 
-      <div class="topbar">
+      <div class="brand">
 
-        <div class="brand">
-
-          <span class="display">
-            ${RESTAURANT}
-          </span>
-
-        </div>
-
-        <a
-          class="backlink"
-          href="${baseUrl}"
-        >
-          ← salir
-        </a>
+        <span class="display">
+          ${RESTAURANT}
+        </span>
 
       </div>
 
+    </div>
+
+    <div style="max-width:380px;margin:60px auto;">
 
       <div class="eyebrow">
-        Panel de cocina
+        Acceso de cocina
       </div>
 
-
-      <div class="staff-sub">
-
-        Los pedidos avanzan de izquierda a derecha.
-        Se actualiza solo cada pocos segundos.
-
+      <div class="display"
+           style="font-size:36px;margin:8px 0 25px;">
+        Iniciar sesión
       </div>
 
+      <input
+        id="login-email"
+        type="email"
+        placeholder="Correo"
+        style="
+          width:100%;
+          padding:13px;
+          margin-bottom:10px;
+          font-family:inherit;
+        "
+      >
+
+      <input
+        id="login-password"
+        type="password"
+        placeholder="Contraseña"
+        style="
+          width:100%;
+          padding:13px;
+          margin-bottom:15px;
+          font-family:inherit;
+        "
+      >
+
+      <button
+        id="login-btn"
+        class="send-btn"
+        style="width:100%;"
+      >
+        Entrar
+      </button>
 
       <div
-        id="board"
-        class="board"
+        id="login-error"
+        style="
+          margin-top:15px;
+          color:#c1502e;
+          font-size:12px;
+        "
       ></div>
 
-    `;
+    </div>
+
+  `;
 
 
-    async function tick(){
+  document.getElementById('login-btn')
+    .onclick = async () => {
 
-      const orders =
-        await getOrders();
+      const email =
+        document
+          .getElementById('login-email')
+          .value
+          .trim();
 
-      draw(orders);
+      const password =
+        document
+          .getElementById('login-password')
+          .value;
 
-    }
+      const errorEl =
+        document.getElementById('login-error');
+
+      const btn =
+        document.getElementById('login-btn');
 
 
-    function draw(orders){
+      errorEl.textContent = '';
 
-      const board =
-        document.getElementById('board');
+      btn.disabled = true;
+
+      btn.textContent = 'Entrando…';
 
 
-      if(!board)
+      const { data, error } =
+        await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+
+      if(error){
+
+        console.error(error);
+
+        errorEl.textContent =
+          'Correo o contraseña incorrectos.';
+
+        btn.disabled = false;
+
+        btn.textContent = 'Entrar';
+
         return;
 
-
-      const cols = [
-
-        {
-          key:'pendiente',
-          label:'Pendiente',
-          cls:'col-pendiente',
-          action:'preparando',
-          actionLabel:'Empezar preparación',
-          actionCls:'action-preparar'
-        },
-
-        {
-          key:'preparando',
-          label:'En preparación',
-          cls:'col-preparando',
-          action:'listo',
-          actionLabel:'Marcar listo',
-          actionCls:'action-listo'
-        },
-
-        {
-          key:'listo',
-          label:'Listo',
-          cls:'col-listo',
-          action:'entregado',
-          actionLabel:'Entregado',
-          actionCls:'action-entregado'
-        }
-
-      ];
+      }
 
 
-      board.innerHTML =
-        cols.map(col => {
+      renderStaff();
 
-          const list =
-            orders
-              .filter(
-                o => o.status === col.key
-              )
-              .sort(
-                (a,b) =>
-                  new Date(a.createdAt)
-                  -
-                  new Date(b.createdAt)
-              );
+    };
 
+}
+  async function renderStaff(){
 
-          return `
+  // Verificar que exista una sesión de Supabase
+  const {
+    data: { session },
+    error
+  } = await supabase.auth.getSession();
 
-            <div class="${col.cls}">
+  if(error || !session){
 
-              <div class="col-head">
+    renderStaffLogin();
 
-                <span>
-                  ${col.label}
-                </span>
+    return;
 
-                <span class="count">
-                  ${list.length}
-                </span>
+  }
 
-              </div>
+  app.innerHTML = `
 
+    <div class="topbar">
 
-              ${
-                list.length === 0
-                ?
-                `
-                  <div class="empty-col">
-                    Sin pedidos
-                  </div>
-                `
-                :
-                list.map(o => `
+      <div class="brand">
 
-                  <div
-                    class="ticket order-ticket"
-                    data-id="${o.id}"
-                  >
+        <span class="display">
+          ${RESTAURANT}
+        </span>
 
-                    <div class="row1">
+      </div>
 
-                      <span class="mesa">
-                        ${o.table}
-                      </span>
+      <button
+        id="logout-btn"
+        class="admin-link"
+        style="margin-top:0;"
+      >
+        ← cerrar sesión
+      </button>
 
-                      <span class="elapsed">
-                        ${elapsedLabel(o.createdAt)}
-                      </span>
-
-                    </div>
+    </div>
 
 
-                    <ul>
-
-                      ${o.items.map(i => `
-
-                        <li>
-
-                          <span>
-                            ${i.qty}× ${i.name}
-                          </span>
-
-                        </li>
-
-                      `).join('')}
-
-                    </ul>
+    <div class="eyebrow">
+      Panel de cocina
+    </div>
 
 
-                    ${
-                      o.notes
-                      ?
-                      `
-                        <div class="notes">
-                          “${o.notes}”
-                        </div>
-                      `
-                      :
-                      ''
-                    }
+    <div class="staff-sub">
+
+      Los pedidos avanzan de izquierda a derecha.
+      Se actualiza solo cada pocos segundos.
+
+    </div>
 
 
-                    <button
-                      class="
-                        action
-                        ${col.actionCls}
-                      "
-                      data-next="${col.action}"
-                    >
-                      ${col.actionLabel}
-                    </button>
+    <div
+      id="board"
+      class="board"
+    ></div>
 
-                  </div>
-
-                `).join('')
-
-              }
-
-            </div>
-
-          `;
-
-        }).join('');
+  `;
 
 
-      board
-        .querySelectorAll('.order-ticket')
-        .forEach(card => {
+  // Cerrar sesión
+  document.getElementById('logout-btn')
+    .onclick = async () => {
 
-          const btn =
-            card.querySelector('.action');
+      await supabase.auth.signOut();
+
+      renderStaffLogin();
+
+    };
 
 
-         btn.onclick =
-  async () => {
+  async function tick(){
 
-    btn.disabled = true;
+    // Comprobar nuevamente que la sesión siga activa
+    const {
+      data: { session }
+    } = await supabase.auth.getSession();
 
-    const id =
-      card.dataset.id;
+    if(!session){
 
-    const next =
-      btn.dataset.next;
-
-    const { error } =
-      await supabase
-        .from('orders')
-        .update({
-          status: next
-        })
-        .eq('id', id);
-
-    if(error){
-
-      console.error(
-        'Error actualizando estado:',
-        error
-      );
-
-      alert(
-        'No se pudo actualizar el pedido.\n\n' +
-        error.message
-      );
-
-      btn.disabled = false;
+      renderStaffLogin();
 
       return;
 
     }
 
-    tick();
+    const orders =
+      await getOrders();
 
-  };
-
-        });
-
-    }
-
-
-    tick();
-
-    setInterval(
-      tick,
-      4000
-    );
+    draw(orders);
 
   }
 
+
+  function draw(orders){
+
+    const board =
+      document.getElementById('board');
+
+
+    if(!board)
+      return;
+
+
+    const cols = [
+
+      {
+        key:'pendiente',
+        label:'Pendiente',
+        cls:'col-pendiente',
+        action:'preparando',
+        actionLabel:'Empezar preparación',
+        actionCls:'action-preparar'
+      },
+
+      {
+        key:'preparando',
+        label:'En preparación',
+        cls:'col-preparando',
+        action:'listo',
+        actionLabel:'Marcar listo',
+        actionCls:'action-listo'
+      },
+
+      {
+        key:'listo',
+        label:'Listo',
+        cls:'col-listo',
+        action:'entregado',
+        actionLabel:'Entregado',
+        actionCls:'action-entregado'
+      }
+
+    ];
+
+
+    board.innerHTML =
+      cols.map(col => {
+
+        const list =
+          orders
+            .filter(
+              o => o.status === col.key
+            )
+            .sort(
+              (a,b) =>
+                new Date(a.createdAt)
+                -
+                new Date(b.createdAt)
+            );
+
+
+        return `
+
+          <div class="${col.cls}">
+
+            <div class="col-head">
+
+              <span>
+                ${col.label}
+              </span>
+
+              <span class="count">
+                ${list.length}
+              </span>
+
+            </div>
+
+
+            ${
+              list.length === 0
+              ?
+              `
+                <div class="empty-col">
+                  Sin pedidos
+                </div>
+              `
+              :
+              list.map(o => `
+
+                <div
+                  class="ticket order-ticket"
+                  data-id="${o.id}"
+                >
+
+                  <div class="row1">
+
+                    <span class="mesa">
+                      ${o.table}
+                    </span>
+
+                    <span class="elapsed">
+                      ${elapsedLabel(o.createdAt)}
+                    </span>
+
+                  </div>
+
+
+                  <ul>
+
+                    ${o.items.map(i => `
+
+                      <li>
+
+                        <span>
+                          ${i.qty}× ${i.name}
+                        </span>
+
+                      </li>
+
+                    `).join('')}
+
+                  </ul>
+
+
+                  ${
+                    o.notes
+                    ?
+                    `
+                      <div class="notes">
+                        “${o.notes}”
+                      </div>
+                    `
+                    :
+                    ''
+                  }
+
+
+                  <button
+                    class="
+                      action
+                      ${col.actionCls}
+                    "
+                    data-next="${col.action}"
+                  >
+                    ${col.actionLabel}
+                  </button>
+
+                </div>
+
+              `).join('')
+
+            }
+
+          </div>
+
+        `;
+
+      }).join('');
+
+
+    board
+      .querySelectorAll('.order-ticket')
+      .forEach(card => {
+
+        const btn =
+          card.querySelector('.action');
+
+
+        btn.onclick =
+          async () => {
+
+            btn.disabled = true;
+
+
+            const id =
+              card.dataset.id;
+
+
+            const next =
+              btn.dataset.next;
+
+
+            const list =
+              await getOrders();
+
+
+            const idx =
+              list.findIndex(
+                o => o.id === id
+              );
+
+
+            if(idx > -1){
+
+              if(next === 'entregado'){
+
+                list.splice(idx,1);
+
+              }else{
+
+                list[idx].status =
+                  next;
+
+              }
+
+
+              await saveOrders(list);
+
+            }
+
+
+            tick();
+
+          };
+
+      });
+
+  }
+
+
+  tick();
+
+  setInterval(
+    tick,
+    4000
+  );
+
+}
 
   /* =========================================================
      ROUTER
@@ -1749,11 +2012,11 @@ async function getOrders(){
     Etc.
   */
 
-  if(isAdmin){
+if(isAdmin){
 
-    renderStaff();
+  renderStaff();
 
-  }
+}
 
   else if(
     mesaParam &&
