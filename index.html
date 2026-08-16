@@ -573,7 +573,7 @@
 (function(){
 
   const RESTAURANT = "RAIL";
-  const SUPABASE_URL = "https://ubvxxamgguqgyayzgdxi.supabase.co/rest/v1/";
+  const SUPABASE_URL = "https://ubvxxamgguqgyayzgdxi.supabase.co";
   const SUPABASE_KEY = "sb_publishable_a9bjE0XB_Q42trAFqZ172Q_XyZcYt1V";
 
   const supabase = window.supabase.createClient(
@@ -710,43 +710,81 @@
   }
 
 
-  async function getOrders(){
+async function getOrders(){
 
-    try{
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .order('created_at', { ascending: true });
 
-      const r =
-        await window.storage.get('orders', true);
+  if(error){
 
-      return JSON.parse(r.value);
+    console.error('Error obteniendo pedidos:', error);
 
-    }catch(e){
-
-      return [];
-
-    }
+    return [];
 
   }
+
+  return data.map(o => ({
+
+    id: o.id,
+
+    table: o.table_name,
+
+    tableId: o.table_id,
+
+    items: o.items,
+
+    total: Number(o.total),
+
+    notes: '',
+
+    status: o.status,
+
+    createdAt: o.created_at
+
+  }));
+
+}
 
 
   async function saveOrders(list){
 
-    try{
+  try{
 
-      await window.storage.set(
-        'orders',
-        JSON.stringify(list),
-        true
-      );
+    for(const order of list){
 
-      return true;
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status: order.status
+        })
+        .eq('id', order.id);
 
-    }catch(e){
+      if(error){
 
-      return false;
+        console.error(
+          'Error actualizando pedido:',
+          error
+        );
+
+        return false;
+
+      }
 
     }
 
+    return true;
+
+  }catch(e){
+
+    console.error(e);
+
+    return false;
+
   }
+
+}
 
 
   function elapsedLabel(iso){
@@ -1124,72 +1162,95 @@
 
     async function sendOrder(){
 
-      const btn =
-        document.getElementById('send-btn');
+  const btn =
+    document.getElementById('send-btn');
 
+  btn.disabled = true;
+  btn.textContent = 'Enviando…';
 
-      btn.disabled = true;
+  const notes =
+    document
+      .getElementById('notes')
+      .value
+      .trim();
 
-      btn.textContent = 'Enviando…';
+  const order = {
 
+    id:
+      Date.now().toString(36)
+      +
+      Math.random()
+        .toString(36)
+        .slice(2,6),
 
-      const notes =
-        document
-          .getElementById('notes')
-          .value
-          .trim();
+    table_name:
+      mesa.nombre,
 
+    table_id:
+      mesa.id,
 
-      const order = {
+    items:
+      Object.values(cart),
 
-        id:
-          Date.now().toString(36)
-          +
-          Math.random()
-            .toString(36)
-            .slice(2,6),
+    total:
+      cartTotal(),
 
-        table:
-          mesa.nombre,
+    status:
+      'pendiente',
 
-        tableId:
-          mesa.id,
+    created_at:
+      new Date().toISOString()
 
-        items:
-          Object.values(cart),
+  };
 
-        total:
-          cartTotal(),
+  const { data, error } = await supabase
+    .from('orders')
+    .insert([order])
+    .select()
+    .single();
 
-        notes,
+  if(error){
 
-        status:
-          'pendiente',
+    console.error('Error enviando pedido:', error);
 
-        createdAt:
-          new Date().toISOString(),
+    alert(
+      'No se pudo enviar el pedido.\n\n' +
+      error.message
+    );
 
-      };
+    btn.disabled = false;
+    btn.textContent = 'Enviar pedido';
 
+    return;
 
-      const current =
-        await getOrders();
+  }
 
+  const savedOrder = {
 
-      current.push(order);
+    id: data.id,
 
+    table: data.table_name,
 
-      await saveOrders(current);
+    tableId: data.table_id,
 
+    items: data.items,
 
-      lastOrderId =
-        order.id;
+    total: Number(data.total),
 
+    notes: notes,
 
-      renderConfirm(order);
+    status: data.status,
 
-    }
+    createdAt: data.created_at
 
+  };
+
+  lastOrderId =
+    savedOrder.id;
+
+  renderConfirm(savedOrder);
+
+}
 
     function renderConfirm(order){
 
@@ -1612,52 +1673,46 @@
             card.querySelector('.action');
 
 
-          btn.onclick =
-            async () => {
+         btn.onclick =
+  async () => {
 
-              btn.disabled = true;
+    btn.disabled = true;
 
+    const id =
+      card.dataset.id;
 
-              const id =
-                card.dataset.id;
+    const next =
+      btn.dataset.next;
 
+    const { error } =
+      await supabase
+        .from('orders')
+        .update({
+          status: next
+        })
+        .eq('id', id);
 
-              const next =
-                btn.dataset.next;
+    if(error){
 
+      console.error(
+        'Error actualizando estado:',
+        error
+      );
 
-              const list =
-                await getOrders();
+      alert(
+        'No se pudo actualizar el pedido.\n\n' +
+        error.message
+      );
 
+      btn.disabled = false;
 
-              const idx =
-                list.findIndex(
-                  o => o.id === id
-                );
+      return;
 
+    }
 
-              if(idx > -1){
+    tick();
 
-                if(next === 'entregado'){
-
-                  list.splice(idx,1);
-
-                }else{
-
-                  list[idx].status =
-                    next;
-
-                }
-
-
-                await saveOrders(list);
-
-              }
-
-
-              tick();
-
-            };
+  };
 
         });
 
