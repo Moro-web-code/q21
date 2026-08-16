@@ -568,11 +568,18 @@
 <body>
 
 <div id="app" class="screen">Cargando…</div>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function(){
 
   const RESTAURANT = "RAIL";
+  const SUPABASE_URL = "https://ubvxxamgguqgyayzgdxi.supabase.co/rest/v1/";
+  const SUPABASE_KEY = "sb_publishable_a9bjE0XB_Q42trAFqZ172Q_XyZcYt1V";
+
+  const supabase = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
 
   const MESAS = [
     {id:1, nombre:"Mesa 1"},
