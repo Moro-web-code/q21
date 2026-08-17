@@ -1304,7 +1304,19 @@ async function sendOrder(){
 
   };
 
+const {
+  data: { session }
+} = await supabase.auth.getSession();
 
+console.log(
+  'SESION ACTUAL:',
+  session
+);
+
+console.log(
+  'USUARIO:',
+  session?.user
+);
   // Enviar pedido a Supabase
   const { data, error } =
     await supabase
