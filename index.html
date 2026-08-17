@@ -1991,37 +1991,31 @@ function renderStaffLogin(){
               btn.dataset.next;
 
 
-            const list =
-              await getOrders();
+           const { error } = await supabase
+  .from('orders')
+  .update({
+    status: next
+  })
+  .eq('id', id);
 
+if(error){
 
-            const idx =
-              list.findIndex(
-                o => o.id === id
-              );
+  console.error(
+    'Error actualizando pedido:',
+    error
+  );
 
+  alert(
+    'No se pudo actualizar el pedido: ' +
+    error.message
+  );
 
-            if(idx > -1){
+  btn.disabled = false;
 
-              if(next === 'entregado'){
+  return;
+}
 
-                list.splice(idx,1);
-
-              }else{
-
-                list[idx].status =
-                  next;
-
-              }
-
-
-              await saveOrders(list);
-
-            }
-
-
-            tick();
-
+tick();
           };
 
       });
