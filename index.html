@@ -1318,78 +1318,74 @@ console.log(
   session?.user
 );
   // Enviar pedido a Supabase
-  const { data, error } =
-    await supabase
-      .from('orders')
-      .insert([order])
-      .select()
-      .single();
+const { error } =
+  await supabase
+    .from('orders')
+    .insert([order]);
 
 
-  if(error){
+if(error){
 
-    console.error(
-      'Error creando pedido:',
-      error
-    );
-
-    alert(
-      'No se pudo enviar el pedido.\n\n' +
-      error.message
-    );
-
-    btn.disabled = false;
-    btn.textContent = 'Enviar pedido';
-
-    return;
-
-  }
-
-
-  // Guardar el token solamente
-  // en el navegador del cliente
-  localStorage.setItem(
-    'order_token_' + data.id,
-    data.access_token
+  console.error(
+    'Error creando pedido:',
+    error
   );
 
+  alert(
+    'No se pudo enviar el pedido.\n\n' +
+    error.message
+  );
 
-  lastOrderId =
-    data.id;
+  btn.disabled = false;
+  btn.textContent = 'Enviar pedido';
+
+  return;
+
+}
 
 
-  // Mostrar confirmación
-  renderConfirm({
+// Guardamos el token del pedido
+localStorage.setItem(
+  'order_token_' + order.id,
+  accessToken
+);
 
-    id:
-      data.id,
 
-    table:
-      data.table_name,
+lastOrderId =
+  order.id;
 
-    tableId:
-      data.table_id,
 
-    items:
-      data.items,
+// Mostramos la confirmación
+renderConfirm({
 
-    total:
-      Number(data.total),
+  id:
+    order.id,
 
-    notes:
-      data.notes || '',
+  table:
+    order.table_name,
 
-    status:
-      data.status,
+  tableId:
+    order.table_id,
 
-    createdAt:
-      data.created_at,
+  items:
+    order.items,
 
-    accessToken:
-      data.access_token
+  total:
+    Number(order.total),
 
-  });
+  notes:
+    order.notes || '',
 
+  status:
+    order.status,
+
+  createdAt:
+    order.created_at,
+
+  accessToken:
+    accessToken
+
+});
 }
     function renderConfirm(order){
 
