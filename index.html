@@ -1203,16 +1203,17 @@ async function getOrder(orderId){
 
               if(!cart[name]){
 
-                cart[name] = {
+cart[name] = {
 
-                  name:item.name,
+  menuItemId: item.id,
 
-                  price:item.price,
+  name:item.name,
 
-                  qty:0
+  price:item.price,
 
-                };
+  qty:0
 
+};
               }
 
               cart[name].qty++;
