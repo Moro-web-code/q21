@@ -1553,32 +1553,66 @@ renderConfirm({
     }
 
 
-    async function pollStatus(orderId){
+   async function pollStatus(orderId){
 
-      const interval =
-        setInterval(async () => {
+  let ultimoEstado = 'pendiente';
 
-          if(
-            !document
-              .getElementById('status-pill')
-          ){
+  const estados = {
+    pendiente: 0,
+    preparando: 1,
+    listo: 2,
+    entregado: 3
+  };
 
-            clearInterval(interval);
+  const interval = setInterval(async () => {
 
-            return;
+    if(
+      !document
+        .getElementById('status-pill')
+    ){
 
-          }
+      clearInterval(interval);
 
-
-const o =
-  await getOrder(orderId);
-
-if(o)
-  updateStatusPill(o.status);
-
-        },4000);
+      return;
 
     }
+
+    const o = await getOrder(orderId);
+
+    if(!o)
+      return;
+
+    /*
+      Solo aceptamos estados que avancen.
+      Nunca permitimos que el celular
+      vuelva a un estado anterior.
+    */
+
+    if(
+      estados[o.status] >=
+      estados[ultimoEstado]
+    ){
+
+      ultimoEstado = o.status;
+
+      updateStatusPill(o.status);
+
+    }
+
+    /*
+      Si el pedido ya fue entregado,
+      dejamos de consultar.
+    */
+
+    if(o.status === 'entregado'){
+
+      clearInterval(interval);
+
+    }
+
+  }, 4000);
+
+}
 
 
     draw();
