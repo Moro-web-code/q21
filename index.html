@@ -1252,7 +1252,7 @@ async function getOrder(orderId){
     }
 
 
-   async function sendOrder(){
+async function sendOrder(){
 
   const btn =
     document.getElementById('send-btn');
@@ -1260,27 +1260,23 @@ async function getOrder(orderId){
   btn.disabled = true;
   btn.textContent = 'Enviando…';
 
-
   const notes =
     document
       .getElementById('notes')
       .value
       .trim();
 
-
-  // Token privado para consultar este pedido
+  // Token privado de este pedido
   const accessToken =
     crypto.randomUUID();
-
 
   const order = {
 
     id:
-      Date.now().toString(36)
-      +
+      Date.now().toString(36) +
       Math.random()
         .toString(36)
-        .slice(2,6),
+        .slice(2, 6),
 
     table_name:
       mesa.nombre,
@@ -1309,11 +1305,11 @@ async function getOrder(orderId){
   };
 
 
-  // Crear pedido directamente en Supabase
+  // Enviar pedido a Supabase
   const { data, error } =
     await supabase
       .from('orders')
-      .insert(order)
+      .insert([order])
       .select()
       .single();
 
@@ -1324,66 +1320,6 @@ async function getOrder(orderId){
       'Error creando pedido:',
       error
     );
-
-    btn.disabled = false;
-
-    btn.textContent =
-      'Enviar pedido';
-
-    alert(
-      'No se pudo enviar el pedido: ' +
-      error.message
-    );
-
-    return;
-
-  }
-
-
-  // Guardamos el token solamente en este navegador
-  localStorage.setItem(
-    'order_token_' + order.id,
-    accessToken
-  );
-
-
-  lastOrderId =
-    order.id;
-
-
-  renderConfirm({
-
-    id: data.id,
-
-    table: data.table_name,
-
-    tableId: data.table_id,
-
-    items: data.items,
-
-    total: Number(data.total),
-
-    notes: data.notes || '',
-
-    status: data.status,
-
-    createdAt: data.created_at,
-
-    accessToken: data.access_token
-
-  });
-
-}
-
-  const { data, error } = await supabase
-    .from('orders')
-    .insert([order])
-    .select()
-    .single();
-
-  if(error){
-
-    console.error('Error enviando pedido:', error);
 
     alert(
       'No se pudo enviar el pedido.\n\n' +
@@ -1397,39 +1333,52 @@ async function getOrder(orderId){
 
   }
 
-const savedOrder = {
 
-  id: data.id,
-
-  table: data.table_name,
-
-  tableId: data.table_id,
-
-  items: data.items,
-
-  total: Number(data.total),
-
-  notes: data.notes || '',
-
-  status: data.status,
-
-  createdAt: data.created_at,
-
-  accessToken: data.access_token
-
-};
+  // Guardar el token solamente
+  // en el navegador del cliente
   localStorage.setItem(
-  'order_token_' + data.id,
-  data.access_token
-);
+    'order_token_' + data.id,
+    data.access_token
+  );
+
 
   lastOrderId =
-    savedOrder.id;
+    data.id;
 
-  renderConfirm(savedOrder);
+
+  // Mostrar confirmación
+  renderConfirm({
+
+    id:
+      data.id,
+
+    table:
+      data.table_name,
+
+    tableId:
+      data.table_id,
+
+    items:
+      data.items,
+
+    total:
+      Number(data.total),
+
+    notes:
+      data.notes || '',
+
+    status:
+      data.status,
+
+    createdAt:
+      data.created_at,
+
+    accessToken:
+      data.access_token
+
+  });
 
 }
-
     function renderConfirm(order){
 
       app.innerHTML = `
