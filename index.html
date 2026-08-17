@@ -1318,11 +1318,19 @@ console.log(
   'USUARIO:',
   session?.user
 );
-  // Enviar pedido a Supabase
-const { error } =
-  await supabase
-    .from('orders')
-    .insert([order]);
+// Crear pedido mediante la función segura de Supabase
+const { data, error } =
+  await supabase.rpc(
+    'create_order',
+    {
+      p_id: order.id,
+      p_table_id: order.table_id,
+      p_table_name: order.table_name,
+      p_items: order.items,
+      p_notes: order.notes,
+      p_access_token: order.access_token
+    }
+  );
 
 
 if(error){
