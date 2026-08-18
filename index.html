@@ -696,18 +696,21 @@ async function getTableTokens(){
     .select('table_id, token')
     .order('table_id');
 
+  console.log('TOKENS DE MESAS:', data);
+  console.log('ERROR TOKENS:', error);
+
   if(error){
 
-    console.error(
-      'Error obteniendo tokens de mesas:',
-      error
+    alert(
+      'ERROR LEYENDO TOKENS:\n\n' +
+      error.message
     );
 
     return [];
 
   }
 
-  return data;
+  return data || [];
 }
 async function getMenu(){
 
