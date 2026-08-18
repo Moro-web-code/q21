@@ -670,7 +670,9 @@ function bloquearNavegacionMesa(token){
 
   }
   
-  async function getTableByToken(token){
+async function getTableByToken(token){
+
+  console.log('TOKEN RECIBIDO:', token);
 
   const { data, error } = await supabase
     .from('table_qr_tokens')
@@ -678,14 +680,24 @@ function bloquearNavegacionMesa(token){
     .eq('token', token)
     .single();
 
+  console.log('DATOS RECIBIDOS:', data);
+  console.log('ERROR RECIBIDO:', error);
+
   if(error){
-    console.error('Error buscando mesa por token:', error);
+
+    alert(
+      'ERROR BUSCANDO TOKEN:\n\n' +
+      error.message
+    );
+
     return null;
   }
 
   const mesa = MESAS.find(
     m => m.id === data.table_id
   );
+
+  console.log('MESA ENCONTRADA:', mesa);
 
   return mesa || null;
 }
