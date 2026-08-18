@@ -678,28 +678,43 @@ async function getTableByToken(token){
     .from('table_qr_tokens')
     .select('table_id, token')
     .eq('token', token)
-    .single();
+    .maybeSingle();
 
   console.log('DATOS RECIBIDOS:', data);
   console.log('ERROR RECIBIDO:', error);
 
   if(error){
 
-    alert(
-      'ERROR BUSCANDO TOKEN:\n\n' +
-      error.message
+    console.error(
+      'Error buscando mesa por token:',
+      error
     );
 
     return null;
+
+  }
+
+  if(!data){
+
+    console.error(
+      'No se encontró ninguna mesa para este token'
+    );
+
+    return null;
+
   }
 
   const mesa = MESAS.find(
     m => m.id === data.table_id
   );
 
-  console.log('MESA ENCONTRADA:', mesa);
+  console.log(
+    'MESA ENCONTRADA:',
+    mesa
+  );
 
   return mesa || null;
+
 }
 async function getTableTokens(){
 
