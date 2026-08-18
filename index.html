@@ -672,16 +672,21 @@ function bloquearNavegacionMesa(token){
   
 async function getTableByToken(token){
 
-  console.log('TOKEN RECIBIDO:', token);
-
   const { data, error } = await supabase
     .from('table_qr_tokens')
     .select('table_id, token')
-    .eq('token', token)
-    .maybeSingle();
+    .eq('token', token);
 
-  console.log('DATOS RECIBIDOS:', data);
-  console.log('ERROR RECIBIDO:', error);
+  alert(
+    'TOKEN QUE RECIBE LA PÁGINA:\n' +
+    token +
+    '\n\n' +
+    'DATOS QUE DEVUELVE SUPABASE:\n' +
+    JSON.stringify(data) +
+    '\n\n' +
+    'ERROR:\n' +
+    JSON.stringify(error)
+  );
 
   if(error){
 
@@ -694,23 +699,14 @@ async function getTableByToken(token){
 
   }
 
-  if(!data){
-
-    console.error(
-      'No se encontró ninguna mesa para este token'
-    );
+  if(!data || data.length === 0){
 
     return null;
 
   }
 
   const mesa = MESAS.find(
-    m => m.id === data.table_id
-  );
-
-  console.log(
-    'MESA ENCONTRADA:',
-    mesa
+    m => m.id === data[0].table_id
   );
 
   return mesa || null;
