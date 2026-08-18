@@ -672,21 +672,24 @@ function bloquearNavegacionMesa(token){
   
 async function getTableByToken(token){
 
+  // Limpiar el token recibido desde la URL
+  const cleanToken = String(token || '').trim();
+
+  console.log('TOKEN RECIBIDO:', cleanToken);
+
+  if(!cleanToken){
+    console.error('No se recibió ningún token.');
+    return null;
+  }
+
   const { data, error } = await supabase
     .from('table_qr_tokens')
     .select('table_id, token')
-    .eq('token', token);
+    .eq('token', cleanToken)
+    .limit(1);
 
-  alert(
-    'TOKEN QUE RECIBE LA PÁGINA:\n' +
-    token +
-    '\n\n' +
-    'DATOS QUE DEVUELVE SUPABASE:\n' +
-    JSON.stringify(data) +
-    '\n\n' +
-    'ERROR:\n' +
-    JSON.stringify(error)
-  );
+  console.log('RESPUESTA table_qr_tokens:', data);
+  console.log('ERROR table_qr_tokens:', error);
 
   if(error){
 
@@ -696,21 +699,44 @@ async function getTableByToken(token){
     );
 
     return null;
-
   }
 
   if(!data || data.length === 0){
 
-    return null;
+    console.error(
+      'No existe una mesa asociada al token:',
+      cleanToken
+    );
 
+    return null;
   }
 
+  // Convertimos table_id a número para evitar
+  // problemas de comparación entre "1" y 1.
+  const tableId = Number(data[0].table_id);
+
+  console.log('TABLE ID ENCONTRADO:', tableId);
+
   const mesa = MESAS.find(
-    m => m.id === data[0].table_id
+    m => Number(m.id) === tableId
   );
 
-  return mesa || null;
+  if(!mesa){
 
+    console.error(
+      'El token existe, pero table_id no coincide con MESAS:',
+      tableId
+    );
+
+    return null;
+  }
+
+  console.log(
+    'MESA ENCONTRADA:',
+    mesa.nombre
+  );
+
+  return mesa;
 }
 async function getTableTokens(){
 
@@ -2201,12 +2227,20 @@ else if(tokenParam){
 
   }
 
+  console.log(
+    'QR VALIDADO CORRECTAMENTE:',
+    mesa.nombre
+  );
+
   bloquearNavegacionMesa(tokenParam);
 
   renderCustomer(mesa.id);
 
 }
 
+else{
+  renderHome();
+}
 else{
 
   renderHome();
