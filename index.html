@@ -669,6 +669,7 @@ function bloquearNavegacionMesa(token){
       + encodeURIComponent(targetUrl);
 
   }
+  
   async function getTableByToken(token){
 
   const { data, error } = await supabase
@@ -688,7 +689,26 @@ function bloquearNavegacionMesa(token){
 
   return mesa || null;
 }
+async function getTableTokens(){
 
+  const { data, error } = await supabase
+    .from('table_qr_tokens')
+    .select('table_id, token')
+    .order('table_id');
+
+  if(error){
+
+    console.error(
+      'Error obteniendo tokens de mesas:',
+      error
+    );
+
+    return [];
+
+  }
+
+  return data;
+}
 async function getMenu(){
 
   const { data, error } =
@@ -909,8 +929,8 @@ async function getOrder(orderId){
      HOME
      ========================================================= */
 
-  function renderHome(){
-
+async function renderHome(){
+  const tokens = await getTableTokens();
     app.innerHTML = `
 
       <div class="topbar">
@@ -949,15 +969,45 @@ async function getOrder(orderId){
 
       <div class="table-grid">
 
-        ${MESAS.map(m => {
+${MESAS.map(m => {
 
-          const url = new URL(baseUrl);
+  const tokenData =
+    tokens.find(
+      t => t.table_id === m.id
+    );
 
-          url.search = '';
+  if(!tokenData){
 
-          url.searchParams.set('mesa', m.id);
+    return `
+      <div class="ticket table-card">
 
-          return `
+        <div class="num">
+          Mesa N.º ${m.id}
+        </div>
+
+        <div class="name">
+          ${m.nombre}
+        </div>
+
+        <div style="color:var(--rust);font-size:11px;">
+          Sin token
+        </div>
+
+      </div>
+    `;
+
+  }
+
+  const url = new URL(baseUrl);
+
+  url.search = '';
+
+  url.searchParams.set(
+    'token',
+    tokenData.token
+  );
+
+  return `
 
             <div class="ticket table-card">
 
