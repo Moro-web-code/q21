@@ -570,7 +570,7 @@
 <div id="app" class="screen">Cargando…</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-(function(){
+(async function(){
 
   const RESTAURANT = "RAIL";
   const SUPABASE_URL = "https://ubvxxamgguqgyayzgdxi.supabase.co";
@@ -627,7 +627,7 @@
 
   const params = new URLSearchParams(window.location.search);
 
-  const mesaParam = params.get('mesa');
+  const tokenParam = params.get('token');
 
   const isAdmin = params.get('admin') === '1';
 
@@ -640,33 +640,22 @@
      BLOQUEAR NAVEGACIÓN DEL CLIENTE
      ========================================================= */
 
-  function bloquearNavegacionMesa(mesaId){
+function bloquearNavegacionMesa(token){
 
-    const urlMesa =
-      baseUrl + '?mesa=' + mesaId;
+  const urlMesa =
+    baseUrl + '?token=' + encodeURIComponent(token);
 
-    /*
-      Reemplazamos la URL actual.
-      Así no queda la página principal como página anterior.
-    */
-    history.replaceState(null, '', urlMesa);
+  history.replaceState(null, '', urlMesa);
 
-    /*
-      Agregamos la mesa nuevamente al historial.
-    */
+  history.pushState(null, '', urlMesa);
+
+  window.addEventListener('popstate', function(){
+
     history.pushState(null, '', urlMesa);
 
-    /*
-      Si el cliente presiona "Atrás",
-      lo mantenemos en la misma mesa.
-    */
-    window.addEventListener('popstate', function(){
+  });
 
-      history.pushState(null, '', urlMesa);
-
-    });
-
-  }
+}
 
 
   function fmt(n){
@@ -680,7 +669,25 @@
       + encodeURIComponent(targetUrl);
 
   }
+  async function getTableByToken(token){
 
+  const { data, error } = await supabase
+    .from('table_qr_tokens')
+    .select('table_id, token')
+    .eq('token', token)
+    .single();
+
+  if(error){
+    console.error('Error buscando mesa por token:', error);
+    return null;
+  }
+
+  const mesa = MESAS.find(
+    m => m.id === data.table_id
+  );
+
+  return mesa || null;
+}
 
 async function getMenu(){
 
@@ -2089,37 +2096,46 @@ if(isAdmin){
 
 }
 
-  else if(
-    mesaParam &&
-    MESAS.some(
-      m => m.id === Number(mesaParam)
-    )
-  ){
+else if(tokenParam){
 
-    const mesaId =
-      Number(mesaParam);
+  const mesa = await getTableByToken(tokenParam);
 
+  if(!mesa){
 
-    /*
-      IMPORTANTE:
-      bloqueamos el botón ATRÁS
-      para mantener al cliente
-      dentro de su mesa.
-    */
+    app.innerHTML = `
+      <div style="text-align:center;padding:60px 20px;">
+        
+        <div class="eyebrow">
+          QR no válido
+        </div>
 
-    bloquearNavegacionMesa(mesaId);
+        <div class="display"
+             style="font-size:32px;margin:10px 0;">
+          Código no reconocido
+        </div>
 
+        <p style="color:var(--paper-shadow);">
+          Este código QR no corresponde a una mesa válida.
+        </p>
 
-    renderCustomer(mesaId);
+      </div>
+    `;
 
-  }
-
-  else{
-
-    renderHome();
+    return;
 
   }
 
+  bloquearNavegacionMesa(tokenParam);
+
+  renderCustomer(mesa.id);
+
+}
+
+else{
+
+  renderHome();
+
+}
 })();
 </script>
 
