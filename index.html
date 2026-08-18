@@ -672,15 +672,7 @@ function bloquearNavegacionMesa(token){
   
 async function getTableByToken(token){
 
-  // Limpiar el token recibido desde la URL
   const cleanToken = String(token || '').trim();
-
-  console.log('TOKEN RECIBIDO:', cleanToken);
-
-  if(!cleanToken){
-    console.error('No se recibió ningún token.');
-    return null;
-  }
 
   const { data, error } = await supabase
     .from('table_qr_tokens')
@@ -688,34 +680,39 @@ async function getTableByToken(token){
     .eq('token', cleanToken)
     .limit(1);
 
-  console.log('RESPUESTA table_qr_tokens:', data);
-  console.log('ERROR table_qr_tokens:', error);
-
+  // Mostrar diagnóstico directamente en pantalla
   if(error){
 
-    console.error(
-      'Error buscando mesa por token:',
-      error
-    );
+    app.innerHTML = `
+      <div style="padding:30px;">
+        <h2>ERROR SUPABASE</h2>
+        <pre>${JSON.stringify(error, null, 2)}</pre>
+      </div>
+    `;
 
     return null;
   }
 
   if(!data || data.length === 0){
 
-    console.error(
-      'No existe una mesa asociada al token:',
-      cleanToken
-    );
+    app.innerHTML = `
+      <div style="padding:30px;">
+        <h2>NO ENCONTRÓ EL TOKEN</h2>
+
+        <p><b>Token recibido:</b></p>
+
+        <pre>${cleanToken}</pre>
+
+        <p><b>Resultado:</b></p>
+
+        <pre>${JSON.stringify(data, null, 2)}</pre>
+      </div>
+    `;
 
     return null;
   }
 
-  // Convertimos table_id a número para evitar
-  // problemas de comparación entre "1" y 1.
   const tableId = Number(data[0].table_id);
-
-  console.log('TABLE ID ENCONTRADO:', tableId);
 
   const mesa = MESAS.find(
     m => Number(m.id) === tableId
@@ -723,18 +720,23 @@ async function getTableByToken(token){
 
   if(!mesa){
 
-    console.error(
-      'El token existe, pero table_id no coincide con MESAS:',
-      tableId
-    );
+    app.innerHTML = `
+      <div style="padding:30px;">
+        <h2>TOKEN ENCONTRADO, PERO MESA NO</h2>
+
+        <p><b>Token:</b></p>
+        <pre>${cleanToken}</pre>
+
+        <p><b>table_id:</b></p>
+        <pre>${tableId}</pre>
+
+        <p><b>MESAS:</b></p>
+        <pre>${JSON.stringify(MESAS, null, 2)}</pre>
+      </div>
+    `;
 
     return null;
   }
-
-  console.log(
-    'MESA ENCONTRADA:',
-    mesa.nombre
-  );
 
   return mesa;
 }
