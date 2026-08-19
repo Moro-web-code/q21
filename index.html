@@ -157,6 +157,7 @@
   const tokenParam    = params.get('token');
   const isAdmin       = params.get('admin') === '1';
   const isAdministrador = params.get('administrador') === '1';
+  const isMesero       = params.get('mesero') === '1';
   const baseUrl       = window.location.origin + window.location.pathname;
 
   // ── Referencia al intervalo de cocina para poder limpiarlo ──
@@ -767,7 +768,125 @@
     /* CORRECCIÓN 8: guardar referencia del intervalo */
     staffInterval = setInterval(tick, 4000);
   }
+/* ============================================================
+   MESERO LOGIN
+============================================================ */
+function renderMeseroLogin(){
 
+  app.innerHTML = `
+    <div class="topbar">
+      <div class="brand">
+        <span class="display">${esc(RESTAURANT)}</span>
+      </div>
+    </div>
+
+    <div style="max-width:380px;margin:60px auto;">
+
+      <div class="eyebrow">Panel de mesero</div>
+
+      <div class="display"
+           style="font-size:36px;margin:8px 0 25px;">
+        Iniciar sesión
+      </div>
+
+      <input
+        id="mesero-email"
+        type="email"
+        placeholder="Correo"
+        style="width:100%;padding:13px;margin-bottom:10px;font-family:inherit;"
+      >
+
+      <input
+        id="mesero-password"
+        type="password"
+        placeholder="Contraseña"
+        style="width:100%;padding:13px;margin-bottom:15px;font-family:inherit;"
+      >
+
+      <button
+        id="mesero-login-btn"
+        class="send-btn"
+        style="width:100%;">
+        Entrar
+      </button>
+
+      <div
+        id="mesero-login-error"
+        style="margin-top:15px;color:#c1502e;font-size:12px;">
+      </div>
+
+    </div>
+  `;
+
+  document.getElementById('mesero-login-btn').onclick = async () => {
+
+    const email =
+      document.getElementById('mesero-email').value.trim();
+
+    const password =
+      document.getElementById('mesero-password').value;
+
+    const errorEl =
+      document.getElementById('mesero-login-error');
+
+    const btn =
+      document.getElementById('mesero-login-btn');
+
+    errorEl.textContent = '';
+
+    btn.disabled = true;
+    btn.textContent = 'Entrando…';
+
+    const { error } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+    if(error){
+
+      errorEl.textContent =
+        'Correo o contraseña incorrectos.';
+
+      btn.disabled = false;
+      btn.textContent = 'Entrar';
+
+      return;
+    }
+
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+
+    const {
+      data: profile,
+      error: profileError
+    } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if(
+      profileError ||
+      !profile ||
+      !['mozo', 'admin', 'superadmin'].includes(profile.role)
+    ){
+
+      await supabase.auth.signOut();
+
+      errorEl.textContent =
+        'Esta cuenta no tiene permisos para manejar mesas.';
+
+      btn.disabled = false;
+      btn.textContent = 'Entrar';
+
+      return;
+    }
+
+    renderMesero();
+  };
+}
 
   /* ============================================================
      ADMIN LOGIN
@@ -963,6 +1082,15 @@
       renderStaff();
     }
   }
+    else if(isMesero){
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if(!session){
+    renderMeseroLogin();
+  } else {
+    renderMesero();
+  }
+}
   else if(isAdministrador){
     const { data: { session } } = await supabase.auth.getSession();
     if(!session){
