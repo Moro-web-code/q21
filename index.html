@@ -1896,7 +1896,29 @@ function renderAdministradorLogin(){
     };
 
 }
-  function renderAdministrador(){
+async function renderAdministrador(){
+
+  // ==========================================
+  // VERIFICAR SESIÓN
+  // ==========================================
+
+  const {
+    data: { session },
+    error: sessionError
+  } = await supabase.auth.getSession();
+
+  if(sessionError || !session){
+
+    renderAdministradorLogin();
+
+    return;
+
+  }
+
+
+  // ==========================================
+  // INTERFAZ
+  // ==========================================
 
   app.innerHTML = `
 
@@ -1918,23 +1940,159 @@ function renderAdministradorLogin(){
 
     </div>
 
+
     <div class="eyebrow">
       Administración
     </div>
 
+
     <div
       class="display"
-      style="font-size:40px;margin:8px 0 20px;"
+      style="
+        font-size:40px;
+        margin:8px 0 30px;
+      "
     >
       Panel administrativo
     </div>
 
-    <div class="note-box">
-      Acceso de administrador confirmado.
-      El dashboard lo construiremos aquí.
+
+    <!-- =====================================
+         ESTADÍSTICAS
+         ===================================== -->
+
+    <div
+      id="admin-stats"
+      style="
+        display:grid;
+        grid-template-columns:
+          repeat(auto-fit,minmax(180px,1fr));
+        gap:16px;
+        margin-bottom:30px;
+      "
+    >
+
+      <div class="note-box">
+        <div class="eyebrow">
+          Pedidos de hoy
+        </div>
+
+        <div
+          id="stat-orders"
+          class="display"
+          style="font-size:32px;margin-top:8px;"
+        >
+          —
+        </div>
+      </div>
+
+
+      <div class="note-box">
+        <div class="eyebrow">
+          Ventas de hoy
+        </div>
+
+        <div
+          id="stat-sales"
+          class="display"
+          style="font-size:32px;margin-top:8px;"
+        >
+          —
+        </div>
+      </div>
+
+
+      <div class="note-box">
+        <div class="eyebrow">
+          Pedidos listos
+        </div>
+
+        <div
+          id="stat-ready"
+          class="display"
+          style="font-size:32px;margin-top:8px;"
+        >
+          —
+        </div>
+      </div>
+
+
+      <div class="note-box">
+        <div class="eyebrow">
+          Entregados
+        </div>
+
+        <div
+          id="stat-delivered"
+          class="display"
+          style="font-size:32px;margin-top:8px;"
+        >
+          —
+        </div>
+      </div>
+
+
+      <div class="note-box">
+        <div class="eyebrow">
+          Ticket promedio
+        </div>
+
+        <div
+          id="stat-average"
+          class="display"
+          style="font-size:32px;margin-top:8px;"
+        >
+          —
+        </div>
+      </div>
+
     </div>
 
+
+    <!-- =====================================
+         BOTONES
+         ===================================== -->
+
+    <div
+      style="
+        display:flex;
+        gap:12px;
+        flex-wrap:wrap;
+      "
+    >
+
+      <button
+        id="admin-qr-btn"
+        class="send-btn"
+      >
+        📱 Ver códigos QR
+      </button>
+
+
+      <button
+        id="admin-refresh-btn"
+        class="send-btn"
+      >
+        ↻ Actualizar
+      </button>
+
+    </div>
+
+
+    <div
+      id="admin-message"
+      style="
+        margin-top:18px;
+        font-size:13px;
+      "
+    ></div>
+
   `;
+
+
+  // ==========================================
+  // CERRAR SESIÓN
+  // ==========================================
 
   document
     .getElementById('admin-logout')
@@ -1946,8 +2104,168 @@ function renderAdministradorLogin(){
 
     };
 
+
+  // ==========================================
+  // CARGAR ESTADÍSTICAS
+  // ==========================================
+
+  async function cargarEstadisticas(){
+
+    const message =
+      document.getElementById('admin-message');
+
+    message.textContent = 'Cargando estadísticas…';
+
+
+    // ------------------------------------------
+    // Inicio del día
+    // ------------------------------------------
+
+    const ahora = new Date();
+
+    const inicioDia = new Date(
+      ahora.getFullYear(),
+      ahora.getMonth(),
+      ahora.getDate()
+    );
+
+
+    // ------------------------------------------
+    // Obtener pedidos
+    // ------------------------------------------
+
+    const {
+      data: orders,
+      error
+    } = await supabase
+      .from('orders')
+      .select('id,total,status,created_at')
+      .gte(
+        'created_at',
+        inicioDia.toISOString()
+      );
+
+
+    if(error){
+
+      console.error(
+        'Error obteniendo pedidos:',
+        error
+      );
+
+      message.textContent =
+        'No se pudieron cargar las estadísticas.';
+
+      return;
+
+    }
+
+
+    // ------------------------------------------
+    // Cálculos
+    // ------------------------------------------
+
+    const pedidosHoy =
+      orders.length;
+
+
+    const ventasHoy =
+      orders.reduce(
+        (sum, order) =>
+          sum + Number(order.total || 0),
+        0
+      );
+
+
+    const pedidosListos =
+      orders.filter(
+        order => order.status === 'listo'
+      ).length;
+
+
+    const pedidosEntregados =
+      orders.filter(
+        order => order.status === 'entregado'
+      ).length;
+
+
+    const ticketPromedio =
+      pedidosHoy > 0
+        ? ventasHoy / pedidosHoy
+        : 0;
+
+
+    // ------------------------------------------
+    // Mostrar
+    // ------------------------------------------
+
+    document.getElementById(
+      'stat-orders'
+    ).textContent =
+      pedidosHoy;
+
+
+    document.getElementById(
+      'stat-sales'
+    ).textContent =
+      `S/ ${ventasHoy.toFixed(2)}`;
+
+
+    document.getElementById(
+      'stat-ready'
+    ).textContent =
+      pedidosListos;
+
+
+    document.getElementById(
+      'stat-delivered'
+    ).textContent =
+      pedidosEntregados;
+
+
+    document.getElementById(
+      'stat-average'
+    ).textContent =
+      `S/ ${ticketPromedio.toFixed(2)}`;
+
+
+    message.textContent =
+      'Datos actualizados.';
+
+  }
+
+
+  // ==========================================
+  // BOTÓN ACTUALIZAR
+  // ==========================================
+
+  document
+    .getElementById('admin-refresh-btn')
+    .onclick = cargarEstadisticas;
+
+
+  // ==========================================
+  // BOTÓN QR
+  // ==========================================
+
+  document
+    .getElementById('admin-qr-btn')
+    .onclick = () => {
+
+      alert(
+        'Aquí colocaremos el administrador de códigos QR.'
+      );
+
+    };
+
+
+  // ==========================================
+  // CARGAR AL ENTRAR
+  // ==========================================
+
+  await cargarEstadisticas();
+
 }
-  
   function renderStaffLogin(){
 
   app.innerHTML = `
