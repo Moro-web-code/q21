@@ -887,7 +887,351 @@ function renderMeseroLogin(){
     renderMesero();
   };
 }
+/* ============================================================
+   MESERO PANEL
+============================================================ */
+async function renderMesero(){
 
+  const { data: { session } } =
+    await supabase.auth.getSession();
+
+  if(!session){
+    renderMeseroLogin();
+    return;
+  }
+
+
+  app.innerHTML = `
+    <div class="topbar">
+
+      <div class="brand">
+        <span class="display">${esc(RESTAURANT)}</span>
+      </div>
+
+      <button
+        id="mesero-logout"
+        class="admin-link"
+        style="margin-top:0;">
+        ← cerrar sesión
+      </button>
+
+    </div>
+
+    <div class="eyebrow">Panel de mesero</div>
+
+    <div class="display"
+         style="font-size:40px;margin:8px 0 10px;">
+      Mesas
+    </div>
+
+    <div class="staff-sub">
+      Activa una mesa cuando el cliente se siente.
+      Cierra la mesa cuando termine.
+    </div>
+
+    <div id="mesas-map"></div>
+
+    <div id="mesero-message"
+         style="margin-top:18px;font-size:13px;">
+    </div>
+  `;
+
+
+  document.getElementById('mesero-logout').onclick =
+    async () => {
+
+      await supabase.auth.signOut();
+
+      renderMeseroLogin();
+
+    };
+
+
+  async function cargarMesas(){
+
+    const map =
+      document.getElementById('mesas-map');
+
+    if(!map) return;
+
+
+    const { data, error } =
+      await supabase.rpc('get_table_sessions');
+
+
+    if(error){
+
+      map.innerHTML = `
+        <div class="error-msg visible">
+          No se pudo cargar el estado de las mesas.
+        </div>
+      `;
+
+      return;
+    }
+
+
+    const sesiones = data || [];
+
+
+    map.innerHTML = `
+      <div
+        style="
+          display:grid;
+          grid-template-columns:repeat(
+            auto-fit,
+            minmax(220px,1fr)
+          );
+          gap:22px;
+        "
+      >
+
+        ${MESAS.map(mesa => {
+
+          const sesionesMesa =
+            sesiones
+              .filter(s =>
+                Number(s.table_id) === Number(mesa.id)
+              )
+              .sort((a,b) =>
+                new Date(b.started_at) -
+                new Date(a.started_at)
+              );
+
+          const activa =
+            sesionesMesa.find(
+              s => s.status === 'active'
+            );
+
+
+          if(activa){
+
+            return `
+              <div
+                class="ticket"
+                style="
+                  padding:24px;
+                  text-align:center;
+                  border:3px solid var(--sage);
+                "
+              >
+
+                <div
+                  class="eyebrow"
+                  style="color:var(--sage);"
+                >
+                  ● Mesa activa
+                </div>
+
+                <div
+                  class="display"
+                  style="
+                    font-size:34px;
+                    margin:8px 0 18px;
+                  "
+                >
+                  ${esc(mesa.nombre)}
+                </div>
+
+                <div
+                  style="
+                    font-size:11px;
+                    color:var(--ink-soft);
+                    margin-bottom:18px;
+                  "
+                >
+                  QR habilitado
+                </div>
+
+                <button
+                  class="send-btn"
+                  data-close="${mesa.id}"
+                  style="
+                    width:100%;
+                    background:var(--rust);
+                  "
+                >
+                  Cerrar mesa
+                </button>
+
+              </div>
+            `;
+
+          }
+
+
+          return `
+            <div
+              class="ticket"
+              style="
+                padding:24px;
+                text-align:center;
+                border:3px solid var(--paper-shadow);
+              "
+            >
+
+              <div
+                class="eyebrow"
+                style="color:var(--ink-soft);"
+              >
+                ● Mesa cerrada
+              </div>
+
+              <div
+                class="display"
+                style="
+                  font-size:34px;
+                  margin:8px 0 18px;
+                "
+              >
+                ${esc(mesa.nombre)}
+              </div>
+
+              <div
+                style="
+                  font-size:11px;
+                  color:var(--ink-soft);
+                  margin-bottom:18px;
+                "
+              >
+                QR deshabilitado
+              </div>
+
+              <button
+                class="send-btn"
+                data-open="${mesa.id}"
+                style="
+                  width:100%;
+                  background:var(--sage);
+                "
+              >
+                Activar mesa
+              </button>
+
+            </div>
+          `;
+
+        }).join('')}
+
+      </div>
+    `;
+
+
+    /* ==========================
+       ACTIVAR MESA
+    ========================== */
+
+    map.querySelectorAll('[data-open]')
+      .forEach(btn => {
+
+        btn.onclick = async () => {
+
+          const tableId =
+            Number(btn.dataset.open);
+
+          btn.disabled = true;
+          btn.textContent = 'Activando…';
+
+
+          const { error } =
+            await supabase.rpc(
+              'open_table_session',
+              {
+                p_table_id: tableId
+              }
+            );
+
+
+          if(error){
+
+            btn.disabled = false;
+            btn.textContent = 'Activar mesa';
+
+            mostrarMensaje(
+              'No se pudo activar la mesa.'
+            );
+
+            return;
+          }
+
+
+          await cargarMesas();
+
+        };
+
+      });
+
+
+    /* ==========================
+       CERRAR MESA
+    ========================== */
+
+    map.querySelectorAll('[data-close]')
+      .forEach(btn => {
+
+        btn.onclick = async () => {
+
+          const tableId =
+            Number(btn.dataset.close);
+
+          btn.disabled = true;
+          btn.textContent = 'Cerrando…';
+
+
+          const { error } =
+            await supabase.rpc(
+              'close_table_session',
+              {
+                p_table_id: tableId
+              }
+            );
+
+
+          if(error){
+
+            btn.disabled = false;
+            btn.textContent = 'Cerrar mesa';
+
+            mostrarMensaje(
+              'No se pudo cerrar la mesa.'
+            );
+
+            return;
+          }
+
+
+          await cargarMesas();
+
+        };
+
+      });
+
+  }
+
+
+  function mostrarMensaje(texto){
+
+    const el =
+      document.getElementById('mesero-message');
+
+    if(!el) return;
+
+    el.textContent = texto;
+
+    setTimeout(() => {
+
+      if(el.textContent === texto){
+        el.textContent = '';
+      }
+
+    }, 4000);
+
+  }
+
+
+  await cargarMesas();
+
+}
   /* ============================================================
      ADMIN LOGIN
   ============================================================ */
