@@ -631,6 +631,9 @@
 
   const isAdmin = params.get('admin') === '1';
 
+  const isAdministrador =
+  params.get('administrador') === '1';
+
   const baseUrl =
     window.location.origin +
     window.location.pathname;
@@ -1089,11 +1092,18 @@ ${MESAS.map(m => {
 
 
       <a
-        class="admin-link"
-        href="${baseUrl}?admin=1"
-      >
-        → Abrir panel de cocina
-      </a>
+  class="admin-link"
+  href="${baseUrl}?admin=1"
+>
+  → Abrir panel de cocina
+</a>
+
+<a
+  class="admin-link"
+  href="${baseUrl}?administrador=1"
+>
+  → Abrir panel administrativo
+</a>
 
 
       <div class="note-box">
@@ -1733,7 +1743,212 @@ renderConfirm({
   /* =========================================================
      STAFF
      ========================================================= */
-function renderStaffLogin(){
+function renderAdministradorLogin(){
+
+  app.innerHTML = `
+
+    <div class="topbar">
+
+      <div class="brand">
+        <span class="display">
+          ${RESTAURANT}
+        </span>
+      </div>
+
+    </div>
+
+    <div style="max-width:380px;margin:60px auto;">
+
+      <div class="eyebrow">
+        Administración
+      </div>
+
+      <div
+        class="display"
+        style="font-size:36px;margin:8px 0 25px;"
+      >
+        Iniciar sesión
+      </div>
+
+      <input
+        id="admin-email"
+        type="email"
+        placeholder="Correo"
+        style="
+          width:100%;
+          padding:13px;
+          margin-bottom:10px;
+          font-family:inherit;
+        "
+      >
+
+      <input
+        id="admin-password"
+        type="password"
+        placeholder="Contraseña"
+        style="
+          width:100%;
+          padding:13px;
+          margin-bottom:15px;
+          font-family:inherit;
+        "
+      >
+
+      <button
+        id="admin-login-btn"
+        class="send-btn"
+        style="width:100%;"
+      >
+        Entrar
+      </button>
+
+      <div
+        id="admin-login-error"
+        style="
+          margin-top:15px;
+          color:#c1502e;
+          font-size:12px;
+        "
+      ></div>
+
+    </div>
+
+  `;
+
+  document.getElementById('admin-login-btn')
+    .onclick = async () => {
+
+      const email =
+        document
+          .getElementById('admin-email')
+          .value
+          .trim();
+
+      const password =
+        document
+          .getElementById('admin-password')
+          .value;
+
+      const errorEl =
+        document.getElementById(
+          'admin-login-error'
+        );
+
+      const btn =
+        document.getElementById(
+          'admin-login-btn'
+        );
+
+      errorEl.textContent = '';
+
+      btn.disabled = true;
+      btn.textContent = 'Entrando…';
+
+      const { error } =
+        await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+      if(error){
+
+        errorEl.textContent =
+          'Correo o contraseña incorrectos.';
+
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+
+        return;
+
+      }
+
+      const {
+        data: { user }
+      } = await supabase.auth.getUser();
+
+      const { data: profile, error: profileError } =
+        await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+      if(
+        profileError ||
+        !profile ||
+        profile.role !== 'admin'
+      ){
+
+        await supabase.auth.signOut();
+
+        errorEl.textContent =
+          'Esta cuenta no tiene permisos de administrador.';
+
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+
+        return;
+
+      }
+
+      renderAdministrador();
+
+    };
+
+}
+  function renderAdministrador(){
+
+  app.innerHTML = `
+
+    <div class="topbar">
+
+      <div class="brand">
+        <span class="display">
+          ${RESTAURANT}
+        </span>
+      </div>
+
+      <button
+        id="admin-logout"
+        class="admin-link"
+        style="margin-top:0;"
+      >
+        ← cerrar sesión
+      </button>
+
+    </div>
+
+    <div class="eyebrow">
+      Administración
+    </div>
+
+    <div
+      class="display"
+      style="font-size:40px;margin:8px 0 20px;"
+    >
+      Panel administrativo
+    </div>
+
+    <div class="note-box">
+      Acceso de administrador confirmado.
+      El dashboard lo construiremos aquí.
+    </div>
+
+  `;
+
+  document
+    .getElementById('admin-logout')
+    .onclick = async () => {
+
+      await supabase.auth.signOut();
+
+      renderAdministradorLogin();
+
+    };
+
+}
+  
+  function renderStaffLogin(){
 
   app.innerHTML = `
 
@@ -2196,6 +2411,49 @@ tick();
 if(isAdmin){
 
   renderStaff();
+
+}
+
+else if(isAdministrador){
+
+  const {
+    data: { session }
+  } = await supabase.auth.getSession();
+
+  if(!session){
+
+    renderAdministradorLogin();
+
+  }
+  else{
+
+    const { data: user } =
+      await supabase.auth.getUser();
+
+    const { data: profile } =
+      await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.user.id)
+        .single();
+
+    if(
+      profile &&
+      profile.role === 'admin'
+    ){
+
+      renderAdministrador();
+
+    }
+    else{
+
+      await supabase.auth.signOut();
+
+      renderAdministradorLogin();
+
+    }
+
+  }
 
 }
 
