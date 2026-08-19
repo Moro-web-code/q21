@@ -2161,7 +2161,7 @@ async function renderAdministrador(){
     // Obtener pedidos
     // ------------------------------------------
 
-  const {
+ const {
   data: orders,
   error
 } = await supabase
@@ -2219,6 +2219,7 @@ async function renderAdministrador(){
       pedidosHoy > 0
         ? ventasHoy / pedidosHoy
         : 0;
+
 // ==========================================
 // PRODUCTOS MÁS VENDIDOS
 // ==========================================
