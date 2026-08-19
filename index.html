@@ -1873,23 +1873,23 @@ function renderAdministradorLogin(){
           .eq('id', user.id)
           .single();
 
-      if(
-        profileError ||
-        !profile ||
-        profile.role !== 'admin'
-      ){
+ if(
+  profileError ||
+  !profile ||
+  (profile.role !== 'admin' && profile.role !== 'superadmin')
+){
 
-        await supabase.auth.signOut();
+  await supabase.auth.signOut();
 
-        errorEl.textContent =
-          'Esta cuenta no tiene permisos de administrador.';
+  errorEl.textContent =
+    'Esta cuenta no tiene permisos de administrador.';
 
-        btn.disabled = false;
-        btn.textContent = 'Entrar';
+  btn.disabled = false;
+  btn.textContent = 'Entrar';
 
-        return;
+  return;
 
-      }
+}
 
       renderAdministrador();
 
