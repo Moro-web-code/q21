@@ -2047,7 +2047,34 @@ async function renderAdministrador(){
       </div>
 
     </div>
+<!-- =====================================
+     PRODUCTOS MÁS VENDIDOS
+     ===================================== -->
 
+<div
+  class="note-box"
+  style="margin-bottom:30px;"
+>
+
+  <div class="eyebrow">
+    Productos más vendidos
+  </div>
+
+  <div
+    class="display"
+    style="
+      font-size:28px;
+      margin:8px 0 20px;
+    "
+  >
+    🏆 Ranking de productos
+  </div>
+
+  <div id="top-products">
+    Cargando productos…
+  </div>
+
+</div>
 
     <!-- =====================================
          BOTONES
@@ -2134,17 +2161,16 @@ async function renderAdministrador(){
     // Obtener pedidos
     // ------------------------------------------
 
-    const {
-      data: orders,
-      error
-    } = await supabase
-      .from('orders')
-      .select('id,total,status,created_at')
-      .gte(
-        'created_at',
-        inicioDia.toISOString()
-      );
-
+  const {
+  data: orders,
+  error
+} = await supabase
+  .from('orders')
+  .select('id,total,status,created_at,items')
+  .gte(
+    'created_at',
+    inicioDia.toISOString()
+  );
 
     if(error){
 
@@ -2193,7 +2219,56 @@ async function renderAdministrador(){
       pedidosHoy > 0
         ? ventasHoy / pedidosHoy
         : 0;
+// ==========================================
+// PRODUCTOS MÁS VENDIDOS
+// ==========================================
 
+const productos = {};
+
+orders.forEach(order => {
+
+  if(!Array.isArray(order.items)){
+    return;
+  }
+
+  order.items.forEach(item => {
+
+    const nombre = item.name || 'Producto';
+
+    const cantidad =
+      Number(item.qty || 0);
+
+    const precio =
+      Number(item.price || 0);
+
+
+    if(!productos[nombre]){
+
+      productos[nombre] = {
+        cantidad: 0,
+        ventas: 0
+      };
+
+    }
+
+
+    productos[nombre].cantidad += cantidad;
+
+    productos[nombre].ventas +=
+      cantidad * precio;
+
+  });
+
+});
+
+
+const rankingProductos =
+  Object.entries(productos)
+    .sort(
+      (a,b) =>
+        b[1].cantidad - a[1].cantidad
+    )
+    .slice(0,5);
 
     // ------------------------------------------
     // Mostrar
@@ -2227,7 +2302,68 @@ async function renderAdministrador(){
       'stat-average'
     ).textContent =
       `S/ ${ticketPromedio.toFixed(2)}`;
+const topProductsEl =
+  document.getElementById('top-products');
 
+
+if(rankingProductos.length === 0){
+
+  topProductsEl.innerHTML =
+    'No hay productos vendidos hoy.';
+
+} else {
+
+  topProductsEl.innerHTML =
+    rankingProductos
+      .map(
+        ([nombre, datos], index) => `
+
+          <div
+            style="
+              display:flex;
+              justify-content:space-between;
+              align-items:center;
+              padding:12px 0;
+              border-bottom:1px solid rgba(0,0,0,.08);
+              gap:15px;
+            "
+          >
+
+            <div>
+
+              <strong>
+                ${index + 1}. ${nombre}
+              </strong>
+
+              <div
+                style="
+                  font-size:12px;
+                  opacity:.65;
+                  margin-top:4px;
+                "
+              >
+                ${datos.cantidad} vendidos
+              </div>
+
+            </div>
+
+
+            <div
+              style="
+                font-weight:600;
+                white-space:nowrap;
+              "
+            >
+              S/ ${datos.ventas.toFixed(2)}
+            </div>
+
+          </div>
+
+        `
+      )
+      .join('');
+
+}
 
     message.textContent =
       'Datos actualizados.';
