@@ -143,6 +143,7 @@
   const SUPABASE_KEY = "sb_publishable_a9bjE0XB_Q42trAFqZ172Q_XyZcYt1V";
 
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  window.appSupabase = supabase;
 
   const MESAS = [
     {id:1, nombre:"Mesa 1"},
