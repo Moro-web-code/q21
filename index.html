@@ -1607,10 +1607,28 @@ const pedidosHTML =
   }
 
 
-  await cargarMesas();
-  setInterval(() => {
-  cargarMesas();
-}, 4000);
+   await cargarMesas();
+
+
+  /* =====================================================
+     ACTUALIZACIÓN AUTOMÁTICA DE PEDIDOS
+  ===================================================== */
+
+  const canalPedidos =
+    supabase
+      .channel('mesero-orders')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders'
+        },
+        async () => {
+          await cargarMesas();
+        }
+      )
+      .subscribe();
 
 }
   /* ============================================================
