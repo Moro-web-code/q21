@@ -1084,7 +1084,7 @@ const pedidosMesa =
               o.status === 'pendiente' ||
               o.status === 'preparando'
           ).length;
-  const pedidosHTML =
+const pedidosHTML =
   pedidosMesa.length === 0
     ? `
       <div
@@ -1133,11 +1133,15 @@ const pedidosMesa =
             estadoTexto = 'Listo';
           }
 
+          const items = Array.isArray(o.items)
+            ? o.items
+            : [];
+
           return `
             <div
               style="
-                padding:11px 12px;
-                margin-bottom:7px;
+                padding:13px;
+                margin-bottom:9px;
                 border:1px solid var(--paper-shadow);
                 background:var(--paper);
               "
@@ -1149,6 +1153,7 @@ const pedidosMesa =
                   justify-content:space-between;
                   align-items:center;
                   gap:10px;
+                  margin-bottom:10px;
                 "
               >
 
@@ -1173,6 +1178,58 @@ const pedidosMesa =
 
               </div>
 
+              <div>
+
+                ${items.map(item => `
+                  <div
+                    style="
+                      display:flex;
+                      justify-content:space-between;
+                      gap:10px;
+                      font-size:11px;
+                      padding:4px 0;
+                    "
+                  >
+
+                    <div>
+                      <strong>${esc(String(item.qty))}×</strong>
+                      ${esc(item.name)}
+                    </div>
+
+                    <div
+                      style="
+                        white-space:nowrap;
+                        color:var(--ink-soft);
+                      "
+                    >
+                      S/ ${Number(item.price * item.qty).toFixed(2)}
+                    </div>
+
+                  </div>
+                `).join('')}
+
+              </div>
+
+              <div
+                style="
+                  border-top:1px solid var(--paper-shadow);
+                  margin-top:9px;
+                  padding-top:9px;
+                  display:flex;
+                  justify-content:space-between;
+                  font-size:11px;
+                  font-weight:700;
+                "
+              >
+
+                <span>Total</span>
+
+                <span>
+                  S/ ${Number(o.total).toFixed(2)}
+                </span>
+
+              </div>
+
             </div>
           `;
 
@@ -1180,7 +1237,6 @@ const pedidosMesa =
 
       </div>
     `;
-
         /* =================================================
            MESA ACTIVA
         ================================================= */
