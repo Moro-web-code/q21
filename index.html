@@ -1003,10 +1003,10 @@ async function renderMesero(){
   ===================================================== */
 
   const { data: orders, error: ordersError } =
-    await supabase
-      .from('orders')
-      .select('id, table_id, status, created_at')
-      .in('status', ['pendiente', 'preparando', 'listo']);
+  await supabase
+    .from('orders')
+    .select('id, table_id, status, created_at, session_id')
+    .in('status', ['pendiente', 'preparando', 'listo']);
 
 
   if(ordersError){
@@ -1064,10 +1064,14 @@ async function renderMesero(){
 
         /* Pedidos de esta mesa */
 
-        const pedidosMesa =
-          listaPedidos.filter(
-            o => Number(o.table_id) === Number(mesa.id)
-          );
+const pedidosMesa =
+  activa
+    ? listaPedidos.filter(
+        o =>
+          Number(o.table_id) === Number(mesa.id) &&
+          o.session_id === activa.id
+      )
+    : [];
 
 
         const cantidadPedidos =
