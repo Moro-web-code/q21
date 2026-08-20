@@ -197,21 +197,45 @@
      CORRECCIÓN 2: getTableByToken usa la RPC validate_qr_token
      en vez de consultar table_qr_tokens directamente.
   ============================================================ */
-  async function getTableByToken(token){
-    const cleanToken = String(token || '').trim();
+ async function getTableByToken(token){
+  const cleanToken = String(token || '').trim();
 
-    const { data, error } = await supabase.rpc('validate_qr_token', {
-      p_token: cleanToken
-    });
+  const { data, error } = await supabase.rpc('validate_qr_token', {
+    p_token: cleanToken
+  });
 
-    if(error || !data || !data.valid){
-      return null;
-    }
-
-    const tableId = Number(data.table_id);
-    return MESAS.find(m => Number(m.id) === tableId) || null;
+  if(error || !data){
+    return {
+      valid: false,
+      reason: 'error'
+    };
   }
 
+  if(!data.valid){
+    return {
+      valid: false,
+      reason: data.reason || 'qr_invalido'
+    };
+  }
+
+  const tableId = Number(data.table_id);
+
+  const mesa = MESAS.find(
+    m => Number(m.id) === tableId
+  );
+
+  if(!mesa){
+    return {
+      valid: false,
+      reason: 'qr_invalido'
+    };
+  }
+
+  return {
+    valid: true,
+    mesa
+  };
+}
 
   /* ============================================================
      CORRECCIÓN 3: getTableTokens usa la RPC get_table_qr_codes
@@ -1428,6 +1452,9 @@ async function renderMesero(){
 
 
   await cargarMesas();
+  setInterval(() => {
+  cargarMesas();
+}, 4000);
 
 }
   /* ============================================================
@@ -1650,20 +1677,69 @@ async function renderMesero(){
       }
     }
   }
-  else if(tokenParam){
-    const mesa = await getTableByToken(tokenParam);
-    if(!mesa){
+else if(tokenParam){
+
+  const resultado = await getTableByToken(tokenParam);
+
+  if(!resultado.valid){
+
+    if(resultado.reason === 'mesa_inactiva'){
+
       app.innerHTML = `
         <div style="text-align:center;padding:60px 20px;">
-          <div class="eyebrow">QR no válido</div>
-          <div class="display" style="font-size:32px;margin:10px 0;">Código no reconocido</div>
-          <p style="color:var(--paper-shadow);">Este código QR no corresponde a una mesa válida.</p>
-        </div>`;
-      return;
+
+          <div class="eyebrow">
+            Mesa no disponible
+          </div>
+
+          <div
+            class="display"
+            style="font-size:32px;margin:10px 0;">
+            Mesa cerrada
+          </div>
+
+          <p style="color:var(--paper-shadow);">
+            Esta mesa todavía no ha sido habilitada
+            para realizar pedidos.
+          </p>
+
+        </div>
+      `;
+
+    } else {
+
+      app.innerHTML = `
+        <div style="text-align:center;padding:60px 20px;">
+
+          <div class="eyebrow">
+            QR no válido
+          </div>
+
+          <div
+            class="display"
+            style="font-size:32px;margin:10px 0;">
+            Código no reconocido
+          </div>
+
+          <p style="color:var(--paper-shadow);">
+            Este código QR no corresponde a una
+            mesa válida.
+          </p>
+
+        </div>
+      `;
+
     }
-    bloquearNavegacionMesa(tokenParam);
-    renderCustomer(mesa.id);
+
+    return;
   }
+
+  const mesa = resultado.mesa;
+
+  bloquearNavegacionMesa(tokenParam);
+
+  renderCustomer(mesa.id);
+}
   else{
     renderHome();
   }
