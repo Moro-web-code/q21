@@ -1756,7 +1756,10 @@ const pedidosHTML =
       message.textContent = 'Cargando estadísticas…';
 
       const ahora    = new Date();
-      const inicioDia = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+      const inicioDia = new Date(
+      new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
+      + 'T00:00:00-05:00'
+      );
 
       const { data: orders, error } = await supabase
         .from('orders')
