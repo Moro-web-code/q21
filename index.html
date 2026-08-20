@@ -1002,7 +1002,7 @@ async function renderMesero(){
      OBTENER PEDIDOS
   ===================================================== */
 
-  const { data: orders, error: ordersError } =
+const { data: orders, error: ordersError } =
   await supabase
     .from('orders')
     .select('id, table_id, status, created_at, session_id')
