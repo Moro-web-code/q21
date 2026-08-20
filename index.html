@@ -1509,15 +1509,20 @@ const pedidosHTML =
         /* Buscar pedidos pendientes */
 
         const pedidosPendientes =
-          listaPedidos.filter(
-            o =>
-              Number(o.table_id) === tableId &&
-              (
-                o.status === 'pendiente' ||
-                o.status === 'preparando'
-              )
-          );
-
+  listaPedidos.filter(
+    o =>
+      Number(o.table_id) === tableId &&
+      o.session_id ===
+        listaSesiones.find(
+          s =>
+            Number(s.table_id) === tableId &&
+            s.status === 'active'
+        )?.id &&
+      (
+        o.status === 'pendiente' ||
+        o.status === 'preparando'
+      )
+  );
 
         /* =================================================
            CONFIRMACIÓN
