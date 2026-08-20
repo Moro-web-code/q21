@@ -1084,7 +1084,102 @@ const pedidosMesa =
               o.status === 'pendiente' ||
               o.status === 'preparando'
           ).length;
+  const pedidosHTML =
+  pedidosMesa.length === 0
+    ? `
+      <div
+        style="
+          padding:14px;
+          margin-bottom:18px;
+          background:rgba(92,122,90,.08);
+          font-size:11px;
+          color:var(--ink-soft);
+        "
+      >
+        No hay pedidos pendientes.
+      </div>
+    `
+    : `
+      <div
+        style="
+          text-align:left;
+          margin-bottom:18px;
+        "
+      >
 
+        <div
+          style="
+            font-size:9px;
+            text-transform:uppercase;
+            color:var(--ink-soft);
+            margin-bottom:8px;
+            font-weight:700;
+          "
+        >
+          Pedidos de esta sesión
+        </div>
+
+        ${pedidosMesa.map(o => {
+
+          let estadoTexto = o.status;
+
+          if(o.status === 'pendiente'){
+            estadoTexto = 'Pendiente';
+          }
+          else if(o.status === 'preparando'){
+            estadoTexto = 'En preparación';
+          }
+          else if(o.status === 'listo'){
+            estadoTexto = 'Listo';
+          }
+
+          return `
+            <div
+              style="
+                padding:11px 12px;
+                margin-bottom:7px;
+                border:1px solid var(--paper-shadow);
+                background:var(--paper);
+              "
+            >
+
+              <div
+                style="
+                  display:flex;
+                  justify-content:space-between;
+                  align-items:center;
+                  gap:10px;
+                "
+              >
+
+                <div
+                  style="
+                    font-size:11px;
+                    font-weight:700;
+                  "
+                >
+                  Pedido #${esc(String(o.id).slice(0,8))}
+                </div>
+
+                <div
+                  style="
+                    font-size:9px;
+                    text-transform:uppercase;
+                    color:var(--ink-soft);
+                  "
+                >
+                  ${esc(estadoTexto)}
+                </div>
+
+              </div>
+
+            </div>
+          `;
+
+        }).join('')}
+
+      </div>
+    `;
 
         /* =================================================
            MESA ACTIVA
@@ -1211,6 +1306,7 @@ const pedidosMesa =
                 Activa hace ${minutosActiva} min
                 <br>
                 QR habilitado
+                ${pedidosHTML}
               </div>
 
 
