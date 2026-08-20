@@ -916,729 +916,492 @@ function renderMeseroLogin(){
   };
 }
 /* ============================================================
-   MESERO PANEL
+   MESERO PANEL — MAPA VISUAL
 ============================================================ */
 async function renderMesero(){
 
-  const { data: { session } } =
-    await supabase.auth.getSession();
-
-  if(!session){
-    renderMeseroLogin();
-    return;
-  }
-
+  const { data: { session } } = await supabase.auth.getSession();
+  if(!session){ renderMeseroLogin(); return; }
 
   app.innerHTML = `
     <div class="topbar">
-
-      <div class="brand">
-        <span class="display">${esc(RESTAURANT)}</span>
-      </div>
-
-      <button
-        id="mesero-logout"
-        class="admin-link"
-        style="margin-top:0;">
-        ← cerrar sesión
-      </button>
-
+      <div class="brand"><span class="display">${esc(RESTAURANT)}</span></div>
+      <button id="mesero-logout" class="admin-link" style="margin-top:0;">← cerrar sesión</button>
     </div>
 
     <div class="eyebrow">Panel de mesero</div>
-
-    <div class="display"
-         style="font-size:40px;margin:8px 0 10px;">
-      Mesas
-    </div>
-
-    <div class="staff-sub">
-      Activa una mesa cuando el cliente se siente.
-      Cierra la mesa cuando termine.
-    </div>
+    <div class="display" style="font-size:40px;margin:8px 0 6px;">Mapa del restaurante</div>
+    <div class="staff-sub">Toca una mesa para ver detalles, abrirla o cerrarla.</div>
 
     <div id="mesas-map"></div>
+    <div id="mesero-message" style="margin-top:18px;font-size:13px;color:var(--mustard);"></div>
 
-    <div id="mesero-message"
-         style="margin-top:18px;font-size:13px;">
+    <!-- MODAL -->
+    <div id="mesa-modal-overlay" style="
+      display:none;position:fixed;inset:0;
+      background:rgba(0,0,0,.7);z-index:100;
+      align-items:center;justify-content:center;
+    ">
+      <div id="mesa-modal" style="
+        background:var(--paper);color:var(--ink);
+        border-radius:4px;width:min(420px,92vw);
+        max-height:85vh;overflow-y:auto;
+        box-shadow:0 24px 60px rgba(0,0,0,.5);
+      "></div>
     </div>
   `;
 
-
-  document.getElementById('mesero-logout').onclick =
-    async () => {
-
-      await supabase.auth.signOut();
-
-      renderMeseroLogin();
-
-    };
-
-
- async function cargarMesas(){
-
-  const map = document.getElementById('mesas-map');
-
-  if(!map) return;
-
-
-  /* =====================================================
-     OBTENER SESIONES
-  ===================================================== */
-
-  const { data: sesiones, error: sessionError } =
-    await supabase.rpc('get_table_sessions');
-
-
-  if(sessionError){
-
-    map.innerHTML = `
-      <div class="error-msg visible">
-        No se pudo cargar el estado de las mesas.
-      </div>
-    `;
-
-    return;
-  }
-
-
-  /* =====================================================
-     OBTENER PEDIDOS
-  ===================================================== */
-
-const { data: orders, error: ordersError } =
-  await supabase
-    .from('orders')
-    .select('id, table_id, status, items, total, created_at, session_id')
-    .in('status', ['pendiente', 'preparando', 'listo']);
-
-
-  if(ordersError){
-
-    map.innerHTML = `
-      <div class="error-msg visible">
-        No se pudieron cargar los pedidos.
-      </div>
-    `;
-
-    return;
-  }
-
-
-  const listaSesiones = sesiones || [];
-  const listaPedidos = orders || [];
-
-
-  /* =====================================================
-     CREAR MAPA
-  ===================================================== */
-
-  map.innerHTML = `
-    <div
-      style="
-        display:grid;
-        grid-template-columns:repeat(
-          auto-fit,
-          minmax(220px,1fr)
-        );
-        gap:22px;
-      "
-    >
-
-      ${MESAS.map(mesa => {
-
-        /* Buscar sesión activa */
-
-        const sesionesMesa =
-          listaSesiones
-            .filter(s =>
-              Number(s.table_id) === Number(mesa.id)
-            )
-            .sort((a,b) =>
-              new Date(b.started_at) -
-              new Date(a.started_at)
-            );
-
-
-        const activa =
-          sesionesMesa.find(
-            s => s.status === 'active'
-          );
-
-
-        /* Pedidos de esta mesa */
-
-const pedidosMesa =
-  activa
-    ? listaPedidos.filter(
-        o =>
-          Number(o.table_id) === Number(mesa.id) &&
-          o.session_id === activa.id
-      )
-    : [];
-
-
-        const cantidadPedidos =
-          pedidosMesa.length;
-
-
-        const pendientes =
-          pedidosMesa.filter(
-            o =>
-              o.status === 'pendiente' ||
-              o.status === 'preparando'
-          ).length;
-const pedidosHTML =
-  pedidosMesa.length === 0
-    ? `
-      <div
-        style="
-          padding:14px;
-          margin-bottom:18px;
-          background:rgba(92,122,90,.08);
-          font-size:11px;
-          color:var(--ink-soft);
-        "
-      >
-        No hay pedidos pendientes.
-      </div>
-    `
-    : `
-      <div
-        style="
-          text-align:left;
-          margin-bottom:18px;
-        "
-      >
-
-        <div
-          style="
-            font-size:9px;
-            text-transform:uppercase;
-            color:var(--ink-soft);
-            margin-bottom:8px;
-            font-weight:700;
-          "
-        >
-          Pedidos de esta sesión
-        </div>
-
-        ${pedidosMesa.map(o => {
-
-          let estadoTexto = o.status;
-
-          if(o.status === 'pendiente'){
-            estadoTexto = 'Pendiente';
-          }
-          else if(o.status === 'preparando'){
-            estadoTexto = 'En preparación';
-          }
-          else if(o.status === 'listo'){
-            estadoTexto = 'Listo';
-          }
-
-          const items = Array.isArray(o.items)
-            ? o.items
-            : [];
-
-          return `
-            <div
-              style="
-                padding:13px;
-                margin-bottom:9px;
-                border:1px solid var(--paper-shadow);
-                background:var(--paper);
-              "
-            >
-
-              <div
-                style="
-                  display:flex;
-                  justify-content:space-between;
-                  align-items:center;
-                  gap:10px;
-                  margin-bottom:10px;
-                "
-              >
-
-                <div
-                  style="
-                    font-size:11px;
-                    font-weight:700;
-                  "
-                >
-                  Pedido #${esc(String(o.id).slice(0,8))}
-                </div>
-
-                <div
-                  style="
-                    font-size:9px;
-                    text-transform:uppercase;
-                    color:var(--ink-soft);
-                  "
-                >
-                  ${esc(estadoTexto)}
-                </div>
-
-              </div>
-
-              <div>
-
-                ${items.map(item => `
-                  <div
-                    style="
-                      display:flex;
-                      justify-content:space-between;
-                      gap:10px;
-                      font-size:11px;
-                      padding:4px 0;
-                    "
-                  >
-
-                    <div>
-                      <strong>${esc(String(item.qty))}×</strong>
-                      ${esc(item.name)}
-                    </div>
-
-                    <div
-                      style="
-                        white-space:nowrap;
-                        color:var(--ink-soft);
-                      "
-                    >
-                      S/ ${Number(item.price * item.qty).toFixed(2)}
-                    </div>
-
-                  </div>
-                `).join('')}
-
-              </div>
-
-              <div
-                style="
-                  border-top:1px solid var(--paper-shadow);
-                  margin-top:9px;
-                  padding-top:9px;
-                  display:flex;
-                  justify-content:space-between;
-                  font-size:11px;
-                  font-weight:700;
-                "
-              >
-
-                <span>Total</span>
-
-                <span>
-                  S/ ${Number(o.total).toFixed(2)}
-                </span>
-
-              </div>
-
-            </div>
-          `;
-
-        }).join('')}
-
-      </div>
-    `;
-        /* =================================================
-           MESA ACTIVA
-        ================================================= */
-
-        if(activa){
-
-          const minutosActiva =
-            Math.max(
-              0,
-              Math.floor(
-                (Date.now() -
-                  new Date(activa.started_at).getTime())
-                / 60000
-              )
-            );
-
-
-          return `
-            <div
-              class="ticket"
-              style="
-                padding:24px;
-                text-align:center;
-                border:3px solid var(--sage);
-              "
-            >
-
-              <div
-                class="eyebrow"
-                style="color:var(--sage);"
-              >
-                ● Mesa activa
-              </div>
-
-
-              <div
-                class="display"
-                style="
-                  font-size:34px;
-                  margin:8px 0 18px;
-                "
-              >
-                ${esc(mesa.nombre)}
-              </div>
-
-
-              <div
-                style="
-                  display:grid;
-                  grid-template-columns:1fr 1fr;
-                  gap:8px;
-                  margin-bottom:18px;
-                "
-              >
-
-                <div
-                  style="
-                    background:rgba(92,122,90,.12);
-                    padding:10px;
-                    border-radius:2px;
-                  "
-                >
-                  <div
-                    style="
-                      font-family:'Archivo',sans-serif;
-                      font-size:22px;
-                      font-weight:900;
-                    "
-                  >
-                    ${cantidadPedidos}
-                  </div>
-
-                  <div
-                    style="
-                      font-size:9px;
-                      color:var(--ink-soft);
-                      text-transform:uppercase;
-                    "
-                  >
-                    pedidos
-                  </div>
-                </div>
-
-
-                <div
-                  style="
-                    background:rgba(214,161,48,.12);
-                    padding:10px;
-                    border-radius:2px;
-                  "
-                >
-                  <div
-                    style="
-                      font-family:'Archivo',sans-serif;
-                      font-size:22px;
-                      font-weight:900;
-                    "
-                  >
-                    ${pendientes}
-                  </div>
-
-                  <div
-                    style="
-                      font-size:9px;
-                      color:var(--ink-soft);
-                      text-transform:uppercase;
-                    "
-                  >
-                    pendientes
-                  </div>
-                </div>
-
-              </div>
-
-
-              <div
-                style="
-                  font-size:11px;
-                  color:var(--ink-soft);
-                  margin-bottom:18px;
-                "
-              >
-                Activa hace ${minutosActiva} min
-                <br>
-                QR habilitado
-                ${pedidosHTML}
-              </div>
-
-
-              <button
-                class="send-btn"
-                data-close="${mesa.id}"
-                style="
-                  width:100%;
-                  background:var(--rust);
-                "
-              >
-                Cerrar mesa
-              </button>
-
-            </div>
-          `;
-
-        }
-
-
-        /* =================================================
-           MESA CERRADA
-        ================================================= */
-
-        return `
-          <div
-            class="ticket"
-            style="
-              padding:24px;
-              text-align:center;
-              border:3px solid var(--paper-shadow);
-            "
-          >
-
-            <div
-              class="eyebrow"
-              style="color:var(--ink-soft);"
-            >
-              ● Mesa cerrada
-            </div>
-
-
-            <div
-              class="display"
-              style="
-                font-size:34px;
-                margin:8px 0 18px;
-              "
-            >
-              ${esc(mesa.nombre)}
-            </div>
-
-
-            <div
-              style="
-                font-size:11px;
-                color:var(--ink-soft);
-                margin-bottom:18px;
-              "
-            >
-              QR deshabilitado
-            </div>
-
-
-            <button
-              class="send-btn"
-              data-open="${mesa.id}"
-              style="
-                width:100%;
-                background:var(--sage);
-              "
-            >
-              Activar mesa
-            </button>
-
-          </div>
-        `;
-
-      }).join('')}
-
-    </div>
-  `;
-
-
-  /* =====================================================
-     ACTIVAR MESA
-  ===================================================== */
-
-  map.querySelectorAll('[data-open]')
-    .forEach(btn => {
-
-      btn.onclick = async () => {
-
-        const tableId =
-          Number(btn.dataset.open);
-
-
-        btn.disabled = true;
-        btn.textContent = 'Activando…';
-
-
-        const { error } =
-          await supabase.rpc(
-            'open_table_session',
-            {
-              p_table_id: tableId
-            }
-          );
-
-
-        if(error){
-
-          btn.disabled = false;
-          btn.textContent = 'Activar mesa';
-
-          mostrarMensaje(
-            'No se pudo activar la mesa.'
-          );
-
-          return;
-        }
-
-
-        await cargarMesas();
-
-      };
-
-    });
-
-
-  /* =====================================================
-     CERRAR MESA
-  ===================================================== */
-
-  map.querySelectorAll('[data-close]')
-    .forEach(btn => {
-
-      btn.onclick = async () => {
-
-        const tableId =
-          Number(btn.dataset.close);
-
-
-        /* Buscar pedidos pendientes */
-
-        const pedidosPendientes =
-  listaPedidos.filter(
-    o =>
-      Number(o.table_id) === tableId &&
-      o.session_id ===
-        listaSesiones.find(
-          s =>
-            Number(s.table_id) === tableId &&
-            s.status === 'active'
-        )?.id &&
-      (
-        o.status === 'pendiente' ||
-        o.status === 'preparando'
-      )
-  );
-
-        /* =================================================
-           CONFIRMACIÓN
-        ================================================= */
-
-        if(pedidosPendientes.length > 0){
-
-          const confirmar =
-            confirm(
-              `La Mesa ${tableId} tiene ` +
-              `${pedidosPendientes.length} ` +
-              `pedido(s) todavía en proceso.\n\n` +
-              `¿Seguro que deseas cerrar la mesa?`
-            );
-
-
-          if(!confirmar){
-            return;
-          }
-
-        }
-        else{
-
-          const confirmar =
-            confirm(
-              `¿Cerrar la Mesa ${tableId}?`
-            );
-
-
-          if(!confirmar){
-            return;
-          }
-
-        }
-
-
-        btn.disabled = true;
-        btn.textContent = 'Cerrando…';
-
-
-        const { error } =
-          await supabase.rpc(
-            'close_table_session',
-            {
-              p_table_id: tableId
-            }
-          );
-
-
-        if(error){
-
-          btn.disabled = false;
-          btn.textContent = 'Cerrar mesa';
-
-          mostrarMensaje(
-            'No se pudo cerrar la mesa.'
-          );
-
-          return;
-        }
-
-
-        await cargarMesas();
-
-      };
-
-    });
-
-}
-  function mostrarMensaje(texto){
-
-    const el =
-      document.getElementById('mesero-message');
-
-    if(!el) return;
-
-    el.textContent = texto;
-
-    setTimeout(() => {
-
-      if(el.textContent === texto){
-        el.textContent = '';
+  /* CSS del mapa — inyectado una sola vez */
+  if(!document.getElementById('mapa-style')){
+    const st = document.createElement('style');
+    st.id = 'mapa-style';
+    st.textContent = `
+      .mapa-restaurante{
+        position:relative;
+        background:#1a1814;
+        border:1px solid #3a362f;
+        border-radius:4px;
+        width:100%;
+        aspect-ratio:16/10;
+        min-height:320px;
+        max-height:600px;
+        overflow:hidden;
+        margin-top:18px;
+      }
+      .mapa-label-zona{
+        position:absolute;
+        background:#2b2823;
+        border:1px solid #3a362f;
+        border-radius:3px;
+        padding:6px 12px;
+        font-size:10px;
+        letter-spacing:.14em;
+        text-transform:uppercase;
+        color:#55504a;
+        font-family:'JetBrains Mono',monospace;
+        user-select:none;
+        pointer-events:none;
+      }
+      .mapa-mesa{
+        position:absolute;
+        width:80px;height:80px;
+        border-radius:50%;
+        display:flex;flex-direction:column;
+        align-items:center;justify-content:center;
+        cursor:pointer;
+        border:3px solid transparent;
+        transition:transform .15s,box-shadow .15s;
+        user-select:none;
+        transform:translate(-50%,-50%);
+      }
+      .mapa-mesa:hover{
+        transform:translate(-50%,-50%) scale(1.08);
+        box-shadow:0 8px 24px rgba(0,0,0,.5);
+      }
+      .mapa-mesa.estado-libre{
+        background:#2b2823;
+        border-color:#4a453d;
+      }
+      .mapa-mesa.estado-activa{
+        background:rgba(92,122,90,.18);
+        border-color:#5c7a5a;
+      }
+      .mapa-mesa.estado-pendiente{
+        background:rgba(214,161,48,.15);
+        border-color:#d6a130;
+      }
+      .mapa-mesa .mesa-num{
+        font-family:'Archivo',sans-serif;
+        font-weight:900;
+        font-size:18px;
+        line-height:1;
+      }
+      .mapa-mesa.estado-libre .mesa-num{ color:#55504a; }
+      .mapa-mesa.estado-activa .mesa-num{ color:#5c7a5a; }
+      .mapa-mesa.estado-pendiente .mesa-num{ color:#d6a130; }
+      .mapa-mesa .mesa-sub{
+        font-size:9px;
+        letter-spacing:.08em;
+        text-transform:uppercase;
+        margin-top:3px;
+        opacity:.8;
+      }
+      .mapa-mesa.estado-libre .mesa-sub{ color:#55504a; }
+      .mapa-mesa.estado-activa .mesa-sub{ color:#5c7a5a; }
+      .mapa-mesa.estado-pendiente .mesa-sub{ color:#d6a130; }
+      .mapa-mesa .mesa-badge{
+        position:absolute;
+        top:-4px;right:-4px;
+        background:#d6a130;color:#26200e;
+        border-radius:999px;
+        min-width:20px;height:20px;
+        font-size:10px;font-weight:700;
+        display:flex;align-items:center;justify-content:center;
+        padding:0 5px;
+      }
+      .leyenda{
+        display:flex;gap:18px;flex-wrap:wrap;
+        margin-top:14px;font-size:11px;
+        color:var(--paper-shadow);
+      }
+      .leyenda-item{
+        display:flex;align-items:center;gap:6px;
+      }
+      .leyenda-dot{
+        width:12px;height:12px;border-radius:50%;
+        border:2px solid;
       }
 
-    }, 4000);
-
+      /* Modal */
+      .modal-header{
+        padding:20px 22px 14px;
+        border-bottom:1px solid #d8cfb8;
+        display:flex;justify-content:space-between;align-items:flex-start;
+      }
+      .modal-body{ padding:18px 22px 22px; }
+      .modal-stat{
+        display:flex;justify-content:space-between;
+        font-size:13px;padding:8px 0;
+        border-bottom:1px dashed #d8cfb8;
+      }
+      .modal-stat:last-child{ border-bottom:none; }
+      .modal-actions{
+        display:flex;flex-direction:column;gap:10px;
+        margin-top:18px;
+      }
+      .btn-modal{
+        width:100%;padding:12px;border-radius:3px;
+        font-family:'JetBrains Mono',monospace;
+        font-size:12px;font-weight:700;
+        text-transform:uppercase;letter-spacing:.06em;
+        cursor:pointer;border:none;
+      }
+      .btn-abrir{ background:#5c7a5a;color:#fff; }
+      .btn-cerrar{ background:#c1502e;color:#fff; }
+      .btn-secundario{
+        background:transparent;
+        border:1px solid #d8cfb8;
+        color:#55504a;
+      }
+      .pedido-row{
+        padding:10px 0;border-bottom:1px dashed #d8cfb8;
+        font-size:12px;
+      }
+      .pedido-row:last-child{ border-bottom:none; }
+    `;
+    document.head.appendChild(st);
   }
 
+  /* Posiciones fijas de las mesas (% del contenedor) */
+  const POSICIONES = {
+    1: { x:22, y:30 },
+    2: { x:55, y:30 },
+    3: { x:22, y:72 },
+    4: { x:55, y:72 },
+  };
 
-   await cargarMesas();
+  /* Zonas decorativas */
+  const ZONAS = [
+    { label:'Barra',  x:72, y:18, w:20, h:14 },
+    { label:'Cocina', x:72, y:65, w:20, h:20 },
+    { label:'Caja',   x:72, y:42, w:20, h:14 },
+  ];
 
+  let datosActuales = { sesiones:[], pedidos:[] };
+  let modalAbierto  = null;
 
-  /* =====================================================
-     ACTUALIZACIÓN AUTOMÁTICA DE PEDIDOS
-  ===================================================== */
+  /* ── Cerrar modal al click en overlay ── */
+  document.getElementById('mesa-modal-overlay').onclick = (e) => {
+    if(e.target === e.currentTarget) cerrarModal();
+  };
 
-  const canalPedidos =
-    supabase
-      .channel('mesero-orders')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders'
-        },
-        async () => {
-          await cargarMesas();
+  document.getElementById('mesero-logout').onclick = async () => {
+    await supabase.auth.signOut();
+    renderMeseroLogin();
+  };
+
+  /* ── Carga de datos ── */
+  async function cargarDatos(){
+    const [{ data: sesiones }, { data: pedidos }] = await Promise.all([
+      supabase.rpc('get_table_sessions'),
+      supabase
+        .from('orders')
+        .select('id,table_id,status,items,total,created_at,session_id')
+        .in('status',['pendiente','preparando','listo'])
+    ]);
+    datosActuales = {
+      sesiones: sesiones || [],
+      pedidos:  pedidos  || []
+    };
+  }
+
+  /* ── Dibuja el mapa ── */
+  function dibujarMapa(){
+    const map = document.getElementById('mesas-map');
+    if(!map) return;
+
+    const { sesiones, pedidos } = datosActuales;
+
+    const zonasHTML = ZONAS.map(z => `
+      <div class="mapa-label-zona" style="
+        left:${z.x}%;top:${z.y}%;
+        width:${z.w}%;height:${z.h}%;
+        display:flex;align-items:center;justify-content:center;
+      ">${z.label}</div>
+    `).join('');
+
+    const mesasHTML = MESAS.map(mesa => {
+      const pos = POSICIONES[mesa.id] || { x:50, y:50 };
+
+      const sesionActiva = sesiones.find(
+        s => Number(s.table_id) === mesa.id && s.status === 'active'
+      );
+
+      const pedidosMesa = sesionActiva
+        ? pedidos.filter(o =>
+            Number(o.table_id) === mesa.id &&
+            o.session_id === sesionActiva.id
+          )
+        : [];
+
+      const pendientes = pedidosMesa.filter(
+        o => o.status === 'pendiente' || o.status === 'preparando'
+      ).length;
+
+      let estado = 'libre';
+      let subLabel = 'Disponible';
+      if(sesionActiva){
+        estado    = pendientes > 0 ? 'pendiente' : 'activa';
+        subLabel  = pendientes > 0 ? 'Con pedidos' : 'Activa';
+      }
+
+      const badge = pendientes > 0
+        ? `<div class="mesa-badge">${pendientes}</div>`
+        : '';
+
+      return `
+        <div
+          class="mapa-mesa estado-${estado}"
+          data-mesa-id="${mesa.id}"
+          style="left:${pos.x}%;top:${pos.y}%;"
+          title="${esc(mesa.nombre)}"
+        >
+          ${badge}
+          <span class="mesa-num">${mesa.id}</span>
+          <span class="mesa-sub">${subLabel}</span>
+        </div>
+      `;
+    }).join('');
+
+    map.innerHTML = `
+      <div class="mapa-restaurante" id="mapa-canvas">
+        ${zonasHTML}
+        ${mesasHTML}
+      </div>
+      <div class="leyenda">
+        <div class="leyenda-item">
+          <div class="leyenda-dot" style="background:#2b2823;border-color:#4a453d;"></div>
+          Disponible
+        </div>
+        <div class="leyenda-item">
+          <div class="leyenda-dot" style="background:rgba(92,122,90,.4);border-color:#5c7a5a;"></div>
+          Activa
+        </div>
+        <div class="leyenda-item">
+          <div class="leyenda-dot" style="background:rgba(214,161,48,.3);border-color:#d6a130;"></div>
+          Con pedidos pendientes
+        </div>
+      </div>
+    `;
+
+    /* Eventos click en mesas */
+    map.querySelectorAll('.mapa-mesa').forEach(el => {
+      el.onclick = () => {
+        const id = Number(el.dataset.mesaId);
+        abrirModal(id);
+      };
+    });
+
+    /* Si hay modal abierto, refrescarlo */
+    if(modalAbierto !== null) abrirModal(modalAbierto);
+  }
+
+  /* ── Modal de mesa ── */
+  function abrirModal(mesaId){
+    modalAbierto = mesaId;
+    const overlay = document.getElementById('mesa-modal-overlay');
+    const modal   = document.getElementById('mesa-modal');
+    const mesa    = MESAS.find(m => m.id === mesaId);
+    const { sesiones, pedidos } = datosActuales;
+
+    const sesionActiva = sesiones.find(
+      s => Number(s.table_id) === mesaId && s.status === 'active'
+    );
+
+    const pedidosMesa = sesionActiva
+      ? pedidos.filter(o =>
+          Number(o.table_id) === mesaId &&
+          o.session_id === sesionActiva.id
+        )
+      : [];
+
+    const totalMesa = pedidosMesa.reduce((s,o) => s + Number(o.total||0), 0);
+
+    const pendientes = pedidosMesa.filter(
+      o => o.status === 'pendiente' || o.status === 'preparando'
+    ).length;
+
+    const minutosActiva = sesionActiva
+      ? Math.max(0, Math.floor(
+          (Date.now() - new Date(sesionActiva.started_at).getTime()) / 60000
+        ))
+      : 0;
+
+    const estadoColor  = sesionActiva
+      ? (pendientes > 0 ? '#d6a130' : '#5c7a5a')
+      : '#55504a';
+    const estadoTexto  = sesionActiva
+      ? (pendientes > 0 ? '🟡 Con pedidos pendientes' : '🟢 Activa')
+      : '⚪ Disponible';
+
+    const pedidosHTML = pedidosMesa.length === 0
+      ? `<p style="font-size:12px;color:#55504a;margin:12px 0 0;">Sin pedidos en esta sesión.</p>`
+      : pedidosMesa.map(o => {
+          const estadoP =
+            o.status === 'pendiente'  ? 'Pendiente'      :
+            o.status === 'preparando' ? 'En preparación' : 'Listo';
+          return `
+            <div class="pedido-row">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <span style="font-weight:700;">#${esc(String(o.id).slice(0,8))}</span>
+                <span style="color:#55504a;">${esc(estadoP)}</span>
+              </div>
+              <div style="color:#55504a;">
+                ${(Array.isArray(o.items)?o.items:[]).map(i =>
+                  `${esc(String(i.qty))}× ${esc(i.name)}`
+                ).join(' · ')}
+              </div>
+              <div style="text-align:right;font-weight:700;margin-top:4px;">
+                S/ ${Number(o.total).toFixed(2)}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+    const botonesHTML = sesionActiva ? `
+      <button class="btn-modal btn-cerrar" id="modal-btn-cerrar">Cerrar mesa</button>
+    ` : `
+      <button class="btn-modal btn-abrir" id="modal-btn-abrir">Abrir mesa</button>
+    `;
+
+    modal.innerHTML = `
+      <div class="modal-header">
+        <div>
+          <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#55504a;font-family:'JetBrains Mono',monospace;">Mesa</div>
+          <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:28px;line-height:1.1;">${esc(mesa.nombre)}</div>
+          <div style="font-size:12px;margin-top:6px;color:${estadoColor};font-family:'JetBrains Mono',monospace;">${estadoTexto}</div>
+        </div>
+        <button onclick="document.getElementById('mesa-modal-overlay').style.display='none';window._modalAbierto=null;"
+          style="background:none;border:none;font-size:20px;cursor:pointer;color:#55504a;padding:4px;">✕</button>
+      </div>
+
+      <div class="modal-body">
+        ${sesionActiva ? `
+          <div class="modal-stat"><span>Tiempo activa</span><span>${minutosActiva} min</span></div>
+          <div class="modal-stat"><span>Pedidos</span><span>${pedidosMesa.length}</span></div>
+          <div class="modal-stat"><span>Pendientes</span><span>${pendientes}</span></div>
+          <div class="modal-stat"><span>Total acumulado</span><span style="font-weight:700;">S/ ${totalMesa.toFixed(2)}</span></div>
+
+          ${pedidosMesa.length > 0 ? `
+            <div style="margin-top:16px;margin-bottom:6px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#55504a;font-family:'JetBrains Mono',monospace;">Pedidos</div>
+            ${pedidosHTML}
+          ` : pedidosHTML}
+        ` : `
+          <p style="font-size:13px;color:#55504a;margin:0 0 8px;">
+            Esta mesa está disponible. Ábrela cuando el cliente se siente.
+          </p>
+        `}
+
+        <div class="modal-actions">
+          ${botonesHTML}
+          <button class="btn-modal btn-secundario" onclick="cerrarModal()">Cancelar</button>
+        </div>
+      </div>
+    `;
+
+    overlay.style.display = 'flex';
+
+    /* Botón abrir */
+    const btnAbrir = document.getElementById('modal-btn-abrir');
+    if(btnAbrir){
+      btnAbrir.onclick = async () => {
+        btnAbrir.disabled = true;
+        btnAbrir.textContent = 'Abriendo…';
+        const { error } = await supabase.rpc('open_table_session', { p_table_id: mesaId });
+        if(error){
+          btnAbrir.disabled = false;
+          btnAbrir.textContent = 'Abrir mesa';
+          mostrarMensaje('No se pudo abrir la mesa.');
+          return;
         }
-      )
-      .subscribe();
+        await refrescar();
+      };
+    }
 
+    /* Botón cerrar */
+    const btnCerrar = document.getElementById('modal-btn-cerrar');
+    if(btnCerrar){
+      btnCerrar.onclick = async () => {
+        const confirmar = pendientes > 0
+          ? confirm(`La mesa tiene ${pendientes} pedido(s) en proceso.\n¿Seguro que deseas cerrarla?`)
+          : confirm('¿Cerrar esta mesa?');
+        if(!confirmar) return;
+
+        btnCerrar.disabled = true;
+        btnCerrar.textContent = 'Cerrando…';
+        const { error } = await supabase.rpc('close_table_session', { p_table_id: mesaId });
+        if(error){
+          btnCerrar.disabled = false;
+          btnCerrar.textContent = 'Cerrar mesa';
+          mostrarMensaje('No se pudo cerrar la mesa.');
+          return;
+        }
+        await refrescar();
+      };
+    }
+  }
+
+  function cerrarModal(){
+    modalAbierto = null;
+    document.getElementById('mesa-modal-overlay').style.display = 'none';
+  }
+
+  /* Exponemos cerrarModal globalmente para el botón ✕ */
+  window.cerrarModal = cerrarModal;
+
+  async function refrescar(){
+    await cargarDatos();
+    dibujarMapa();
+  }
+
+  function mostrarMensaje(texto){
+    const el = document.getElementById('mesero-message');
+    if(!el) return;
+    el.textContent = texto;
+    setTimeout(() => { if(el.textContent === texto) el.textContent = ''; }, 4000);
+  }
+
+  /* Carga inicial */
+  await refrescar();
+
+  /* Actualización automática via Realtime */
+  supabase
+    .channel('mesero-mapa')
+    .on('postgres_changes', { event:'*', schema:'public', table:'orders' },
+      async () => { await refrescar(); })
+    .on('postgres_changes', { event:'*', schema:'public', table:'table_sessions' },
+      async () => { await refrescar(); })
+    .subscribe();
 }
   /* ============================================================
      ADMIN LOGIN
