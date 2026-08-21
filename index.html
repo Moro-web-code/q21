@@ -5263,60 +5263,1654 @@ renderLoginUnificado();
 return;
 
 
-  /* ============================================================
-     ROUTER
-  ============================================================ */
-   /* ── LOGIN UNIFICADO + ROUTER POR ROL ── */
-  const { data: { session: initSession } } = await supabase.auth.getSession();
+ /* ============================================================
+   ACCESO PRINCIPAL — LOGIN UNIFICADO + CONTROL POR ROL
+   REEMPLAZA TU BLOQUE ROUTER ACTUAL COMPLETO POR ESTE
+   ============================================================ */
 
-  if(tokenParam){
-    const resultado = await getTableByToken(tokenParam);
-    if(!resultado.valid){
-      if(resultado.reason === 'mesa_inactiva'){
-        app.innerHTML = `
-          <div style="text-align:center;padding:60px 20px;">
-            <div class="eyebrow">Mesa no disponible</div>
-            <div class="display" style="font-size:32px;margin:10px 0;">Mesa cerrada</div>
-            <p style="color:var(--paper-shadow);">Esta mesa todavía no ha sido habilitada para realizar pedidos.</p>
-          </div>`;
-      } else {
-        app.innerHTML = `
-          <div style="text-align:center;padding:60px 20px;">
-            <div class="eyebrow">QR no válido</div>
-            <div class="display" style="font-size:32px;margin:10px 0;">Código no reconocido</div>
-            <p style="color:var(--paper-shadow);">Este código QR no corresponde a una mesa válida.</p>
-          </div>`;
-      }
-      return;
+const {
+  data: { session: initSession }
+} = await supabase.auth.getSession();
+
+
+/* ============================================================
+   1. ACCESO CLIENTE MEDIANTE QR
+   ============================================================ */
+
+if(tokenParam){
+
+  const resultado = await getTableByToken(tokenParam);
+
+  if(!resultado.valid){
+
+    if(resultado.reason === 'mesa_inactiva'){
+
+      app.innerHTML = `
+        <div class="access-state">
+          <div class="access-state-icon">
+            <i class="ti ti-lock"></i>
+          </div>
+
+          <div class="eyebrow">Mesa no disponible</div>
+
+          <div class="display">
+            Mesa cerrada
+          </div>
+
+          <p>
+            Esta mesa todavía no ha sido habilitada
+            para realizar pedidos.
+          </p>
+        </div>
+      `;
+
+    }else{
+
+      app.innerHTML = `
+        <div class="access-state">
+          <div class="access-state-icon">
+            <i class="ti ti-qrcode-off"></i>
+          </div>
+
+          <div class="eyebrow">Acceso no válido</div>
+
+          <div class="display">
+            Código no reconocido
+          </div>
+
+          <p>
+            Este código QR no corresponde
+            a una mesa válida.
+          </p>
+        </div>
+      `;
     }
-    bloquearNavegacionMesa(tokenParam);
-    renderCustomer(resultado.mesa.id);
+
     return;
   }
 
-  /* Paneles de staff — con login unificado */
-  if(isAdmin || isMesero || isAdministrador || params.get('superadmin') === '1'){
 
-    if(!initSession){
-      renderLoginUnificado();
-      return;
+  /*
+    IMPORTANTE:
+    El cliente entra únicamente mediante token.
+    Nunca se utiliza el login del personal.
+  */
+
+  bloquearNavegacionMesa(tokenParam);
+
+  renderCustomer(resultado.mesa.id);
+
+  return;
+}
+
+
+/* ============================================================
+   2. SIN TOKEN = ACCESO EXCLUSIVO PARA PERSONAL
+   ============================================================ */
+
+if(!initSession){
+
+  renderLoginUnificado();
+
+  return;
+}
+
+
+/* ============================================================
+   3. EXISTE SESIÓN → OBTENER USUARIO
+   ============================================================ */
+
+const {
+  data: {
+    user
+  },
+  error: userError
+} = await supabase.auth.getUser();
+
+
+if(userError || !user){
+
+  await supabase.auth.signOut();
+
+  renderLoginUnificado();
+
+  return;
+}
+
+
+/* ============================================================
+   4. OBTENER ROL DESDE PROFILES
+   ============================================================ */
+
+const {
+  data: profile,
+  error: profileError
+} = await supabase
+  .from('profiles')
+  .select('role')
+  .eq('id', user.id)
+  .single();
+
+
+if(profileError || !profile){
+
+  console.error(
+    'No se pudo obtener el perfil:',
+    profileError
+  );
+
+  await supabase.auth.signOut();
+
+  app.innerHTML = `
+    <div class="access-state">
+      <div class="access-state-icon">
+        <i class="ti ti-shield-x"></i>
+      </div>
+
+      <div class="eyebrow">
+        Acceso no autorizado
+      </div>
+
+      <div class="display">
+        Perfil no configurado
+      </div>
+
+      <p>
+        Tu usuario no tiene un perfil válido
+        dentro del sistema.
+      </p>
+
+      <button
+        class="access-state-btn"
+        onclick="location.reload()"
+      >
+        Volver
+      </button>
+    </div>
+  `;
+
+  return;
+}
+
+
+const rol = String(profile.role || '')
+  .trim()
+  .toLowerCase();
+
+
+/* ============================================================
+   5. AUTORIZACIÓN REAL POR ROL
+   ============================================================ */
+
+
+/* ------------------------------------------------------------
+   SUPERADMIN
+   ------------------------------------------------------------ */
+
+if(rol === 'superadmin'){
+
+  renderSuperadmin();
+
+  return;
+}
+
+
+/* ------------------------------------------------------------
+   ADMIN
+   ------------------------------------------------------------ */
+
+if(rol === 'admin'){
+
+  renderAdministrador();
+
+  return;
+}
+
+
+/* ------------------------------------------------------------
+   COCINA
+   ------------------------------------------------------------ */
+
+if(rol === 'cocina'){
+
+  renderStaff();
+
+  return;
+}
+
+
+/* ------------------------------------------------------------
+   MESERO
+   ------------------------------------------------------------ */
+
+if(
+  rol === 'mesero' ||
+  rol === 'mozo'
+){
+
+  renderMesero();
+
+  return;
+}
+
+
+/* ============================================================
+   6. ROL DESCONOCIDO
+   ============================================================ */
+
+console.error(
+  'Rol no reconocido:',
+  rol
+);
+
+await supabase.auth.signOut();
+
+renderLoginUnificado();
+
+return;
+
+
+/* ============================================================
+   LOGIN UNIFICADO
+   SI YA TIENES UNA FUNCIÓN renderLoginUnificado(),
+   REEMPLAZA SU CONTENIDO POR ESTA.
+   ============================================================ */
+
+function renderLoginUnificado(){
+
+  app.style.padding = '0';
+  app.style.maxWidth = 'none';
+
+  document.body.classList.add('sa-login-body');
+
+  app.innerHTML = `
+
+    <div class="auth-shell">
+
+      <div class="auth-card">
+
+        <div class="auth-brand">
+
+          <div class="auth-logo">
+            SA
+          </div>
+
+          <div class="auth-brand-name">
+            ${esc(RESTAURANT)}
+          </div>
+
+          <div class="auth-brand-sub">
+            Sistema de gestión
+          </div>
+
+        </div>
+
+
+        <div class="auth-heading">
+
+          <h1>
+            Iniciar sesión
+          </h1>
+
+          <p>
+            Accede al sistema de gestión
+          </p>
+
+        </div>
+
+
+        <form
+          id="auth-login-form"
+          autocomplete="on"
+        >
+
+          <div class="auth-field">
+
+            <label
+              for="auth-email"
+            >
+              Correo electrónico
+            </label>
+
+            <input
+              id="auth-email"
+              class="auth-input"
+              type="email"
+              name="email"
+              autocomplete="username"
+              placeholder="correo@ejemplo.com"
+              required
+            >
+
+          </div>
+
+
+          <div class="auth-field">
+
+            <label
+              for="auth-password"
+            >
+              Contraseña
+            </label>
+
+            <div class="auth-password-wrap">
+
+              <input
+                id="auth-password"
+                class="auth-input"
+                type="password"
+                name="password"
+                autocomplete="current-password"
+                placeholder="Ingresa tu contraseña"
+                required
+              >
+
+              <button
+                type="button"
+                class="auth-eye"
+                id="auth-eye"
+                aria-label="Mostrar contraseña"
+              >
+                <i class="ti ti-eye"></i>
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <div
+            id="auth-error"
+            class="auth-error"
+            role="alert"
+            aria-live="polite"
+          ></div>
+
+
+          <button
+            id="auth-submit"
+            class="auth-submit"
+            type="submit"
+          >
+
+            <span
+              class="auth-submit-content"
+              id="auth-submit-content"
+            >
+              Iniciar sesión
+            </span>
+
+          </button>
+
+        </form>
+
+
+        <div class="auth-footer">
+          Acceso autorizado
+        </div>
+
+      </div>
+
+    </div>
+  `;
+
+
+  /* ==========================================================
+     MOSTRAR / OCULTAR CONTRASEÑA
+     ========================================================== */
+
+  const eye =
+    document.getElementById('auth-eye');
+
+  const password =
+    document.getElementById('auth-password');
+
+
+  eye.onclick = () => {
+
+    const visible =
+      password.type === 'text';
+
+    password.type =
+      visible
+        ? 'password'
+        : 'text';
+
+
+    eye.innerHTML =
+      visible
+        ? '<i class="ti ti-eye"></i>'
+        : '<i class="ti ti-eye-off"></i>';
+
+    eye.setAttribute(
+      'aria-label',
+      visible
+        ? 'Mostrar contraseña'
+        : 'Ocultar contraseña'
+    );
+
+  };
+
+
+  /* ==========================================================
+     LOGIN
+     ========================================================== */
+
+  const form =
+    document.getElementById(
+      'auth-login-form'
+    );
+
+  const errorEl =
+    document.getElementById(
+      'auth-error'
+    );
+
+  const submit =
+    document.getElementById(
+      'auth-submit'
+    );
+
+  const submitContent =
+    document.getElementById(
+      'auth-submit-content'
+    );
+
+
+  form.addEventListener(
+    'submit',
+    async e => {
+
+      e.preventDefault();
+
+
+      errorEl.textContent = '';
+      errorEl.classList.remove('show');
+
+
+      const email =
+        document.getElementById(
+          'auth-email'
+        ).value.trim();
+
+
+      const pass =
+        password.value;
+
+
+      if(!email || !pass){
+
+        errorEl.textContent =
+          'Ingresa tu correo y contraseña.';
+
+        errorEl.classList.add('show');
+
+        return;
+      }
+
+
+      submit.disabled = true;
+
+      submit.classList.add('loading');
+
+
+      submitContent.innerHTML = `
+        <span class="auth-spinner"></span>
+        Verificando acceso…
+      `;
+
+
+      try{
+
+        /*
+          LOGIN SOLAMENTE.
+          No se decide el rol desde el frontend.
+        */
+
+        const {
+          data,
+          error
+        } = await supabase.auth.signInWithPassword({
+          email,
+          password:pass
+        });
+
+
+        if(error){
+
+          throw error;
+
+        }
+
+
+        if(!data || !data.user){
+
+          throw new Error(
+            'No se pudo obtener el usuario autenticado.'
+          );
+
+        }
+
+
+        /* ====================================================
+           OBTENER PERFIL REAL
+           ==================================================== */
+
+        const {
+          data: profile,
+          error: profileError
+        } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+
+        if(profileError || !profile){
+
+          await supabase.auth.signOut();
+
+          throw new Error(
+            'Tu usuario no tiene un rol configurado.'
+          );
+
+        }
+
+
+        const rol =
+          String(profile.role || '')
+            .trim()
+            .toLowerCase();
+
+
+        /*
+          IMPORTANTE:
+
+          Los parámetros de URL NO conceden permisos.
+
+          El rol viene exclusivamente de:
+          
+              Supabase Auth
+                    ↓
+                user.id
+                    ↓
+               profiles
+                    ↓
+                  role
+        */
+
+
+        if(rol === 'superadmin'){
+
+          renderSuperadmin();
+
+          return;
+        }
+
+
+        if(rol === 'admin'){
+
+          renderAdministrador();
+
+          return;
+        }
+
+
+        if(rol === 'cocina'){
+
+          renderStaff();
+
+          return;
+        }
+
+
+        if(
+          rol === 'mesero' ||
+          rol === 'mozo'
+        ){
+
+          renderMesero();
+
+          return;
+        }
+
+
+        await supabase.auth.signOut();
+
+        throw new Error(
+          'Tu cuenta no tiene un rol autorizado.'
+        );
+
+
+      }catch(error){
+
+        console.error(
+          'Error de autenticación:',
+          error
+        );
+
+
+        let mensaje =
+          'No se pudo iniciar sesión.';
+
+
+        const raw =
+          String(
+            error?.message || ''
+          ).toLowerCase();
+
+
+        if(
+          raw.includes('invalid login credentials') ||
+          raw.includes('invalid credentials')
+        ){
+
+          mensaje =
+            'El correo o la contraseña son incorrectos.';
+
+        }else if(
+          raw.includes('email not confirmed')
+        ){
+
+          mensaje =
+            'Tu correo electrónico todavía no ha sido confirmado.';
+
+        }else if(
+          raw.includes('rol') ||
+          raw.includes('perfil')
+        ){
+
+          mensaje =
+            error.message;
+
+        }else if(error?.message){
+
+          mensaje =
+            error.message;
+
+        }
+
+
+        errorEl.textContent =
+          mensaje;
+
+        errorEl.classList.add('show');
+
+
+        submit.disabled = false;
+
+        submit.classList.remove('loading');
+
+        submitContent.textContent =
+          'Iniciar sesión';
+
+      }
+
+    }
+  );
+
+
+  /*
+    Enfocar automáticamente el correo.
+  */
+
+  setTimeout(() => {
+
+    const email =
+      document.getElementById(
+        'auth-email'
+      );
+
+    if(email){
+      email.focus();
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: profile }  = await supabase.from('profiles').select('role').eq('id', user.id).single();
-    const rol = profile?.role;
+  },50);
 
-    if(isAdmin && ['cocina','admin','superadmin'].includes(rol)) { renderStaff(); return; }
-    if(isMesero && ['mozo','admin','superadmin'].includes(rol))  { renderMesero(); return; }
-    if(isAdministrador && ['admin','superadmin'].includes(rol))  { renderAdministrador(); return; }
-    if(params.get('superadmin') === '1' && rol === 'superadmin') { renderSuperadmin(); return; }
+}
+
+
+/* ============================================================
+   CSS LOGIN
+   AGREGA ESTO DENTRO DEL <style> PRINCIPAL
+   ============================================================ */
+
+const authStyle =
+  document.createElement('style');
+
+authStyle.id =
+  'professional-auth-styles';
+
+
+authStyle.textContent = `
+
+  /* ==========================================================
+     LOGIN
+     ========================================================== */
+
+  .sa-login-body{
+    margin:0;
+    padding:0;
+    background:#f5f3ef;
+  }
+
+
+  .auth-shell{
+    min-height:100vh;
+    min-height:100dvh;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    padding:24px;
+
+    box-sizing:border-box;
+
+    background:#f5f3ef;
+
+    font-family:
+      'Inter',
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      sans-serif;
+  }
+
+
+  .auth-card{
+
+    width:100%;
+    max-width:410px;
+
+    background:#ffffff;
+
+    border:1px solid #e7e3dc;
+
+    border-radius:14px;
+
+    padding:38px 36px 30px;
+
+    box-sizing:border-box;
+
+    box-shadow:
+      0 12px 40px rgba(28,26,23,.06);
+  }
+
+
+  /* ==========================================================
+     BRAND
+     ========================================================== */
+
+  .auth-brand{
+    text-align:center;
+    margin-bottom:34px;
+  }
+
+
+  .auth-logo{
+
+    width:52px;
+    height:52px;
+
+    margin:0 auto 13px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    border-radius:11px;
+
+    background:#1c1a17;
+
+    color:#ffffff;
+
+    font-family:
+      'Archivo',
+      sans-serif;
+
+    font-size:15px;
+    font-weight:900;
+
+    letter-spacing:-.03em;
+  }
+
+
+  .auth-brand-name{
+
+    color:#1c1a17;
+
+    font-family:
+      'Archivo',
+      sans-serif;
+
+    font-size:17px;
+
+    font-weight:800;
+
+    line-height:1.2;
+  }
+
+
+  .auth-brand-sub{
+
+    margin-top:4px;
+
+    color:#9e9890;
+
+    font-size:11px;
+
+    font-weight:500;
+
+    letter-spacing:.02em;
+  }
+
+
+  /* ==========================================================
+     HEADING
+     ========================================================== */
+
+  .auth-heading{
+    margin-bottom:24px;
+  }
+
+
+  .auth-heading h1{
+
+    margin:0;
+
+    color:#1c1a17;
+
+    font-family:
+      'Archivo',
+      sans-serif;
+
+    font-size:25px;
+
+    font-weight:800;
+
+    letter-spacing:-.025em;
+  }
+
+
+  .auth-heading p{
+
+    margin:7px 0 0;
+
+    color:#8a847d;
+
+    font-size:13px;
+
+    line-height:1.5;
+  }
+
+
+  /* ==========================================================
+     FIELDS
+     ========================================================== */
+
+  .auth-field{
+    margin-bottom:18px;
+  }
+
+
+  .auth-field label{
+
+    display:block;
+
+    margin-bottom:7px;
+
+    color:#514c46;
+
+    font-size:12px;
+
+    font-weight:600;
+  }
+
+
+  .auth-input{
+
+    width:100%;
+
+    height:44px;
+
+    padding:
+      0 13px;
+
+    box-sizing:border-box;
+
+    border:
+      1px solid #ddd8d0;
+
+    border-radius:8px;
+
+    outline:none;
+
+    background:#ffffff;
+
+    color:#1c1a17;
+
+    font-family:
+      'Inter',
+      sans-serif;
+
+    font-size:13px;
+
+    transition:
+      border-color .15s ease,
+      box-shadow .15s ease,
+      background .15s ease;
+  }
+
+
+  .auth-input::placeholder{
+    color:#b0aaa2;
+  }
+
+
+  .auth-input:hover{
+    border-color:#c9c3ba;
+  }
+
+
+  .auth-input:focus{
+
+    border-color:#817a72;
+
+    box-shadow:
+      0 0 0 3px rgba(28,26,23,.06);
+  }
+
+
+  .auth-password-wrap{
+    position:relative;
+  }
+
+
+  .auth-password-wrap .auth-input{
+    padding-right:44px;
+  }
+
+
+  .auth-eye{
+
+    position:absolute;
+
+    top:50%;
+    right:10px;
+
+    transform:
+      translateY(-50%);
+
+    width:28px;
+    height:28px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    padding:0;
+
+    border:none;
+
+    background:transparent;
+
+    color:#99928a;
+
+    cursor:pointer;
+
+    border-radius:5px;
+  }
+
+
+  .auth-eye:hover{
+    background:#f3f1ed;
+    color:#1c1a17;
+  }
+
+
+  /* ==========================================================
+     ERROR
+     ========================================================== */
+
+  .auth-error{
+
+    min-height:0;
+
+    margin:0;
+
+    padding:0;
+
+    color:#a84228;
+
+    font-size:12px;
+
+    line-height:1.45;
+
+    opacity:0;
+
+    transition:
+      opacity .15s ease,
+      margin .15s ease;
+  }
+
+
+  .auth-error.show{
+
+    opacity:1;
+
+    margin:
+      -2px 0 14px;
+
+    padding:
+      9px 11px;
+
+    border:
+      1px solid #ead0c7;
+
+    border-radius:7px;
+
+    background:#fdf3ef;
+  }
+
+
+  /* ==========================================================
+     BUTTON
+     ========================================================== */
+
+  .auth-submit{
+
+    width:100%;
+
+    height:45px;
+
+    margin-top:4px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    border:1px solid #1c1a17;
+
+    border-radius:8px;
+
+    background:#1c1a17;
+
+    color:#ffffff;
+
+    font-family:
+      'Inter',
+      sans-serif;
+
+    font-size:13px;
+
+    font-weight:700;
+
+    cursor:pointer;
+
+    transition:
+      background .15s ease,
+      border-color .15s ease,
+      transform .08s ease,
+      opacity .15s ease;
+  }
+
+
+  .auth-submit:hover{
+    background:#302d29;
+    border-color:#302d29;
+  }
+
+
+  .auth-submit:active{
+    transform:translateY(1px);
+  }
+
+
+  .auth-submit:disabled{
+    cursor:not-allowed;
+    opacity:.72;
+  }
+
+
+  .auth-submit.loading{
+    cursor:wait;
+  }
+
+
+  .auth-submit-content{
+
+    display:flex;
+
+    align-items:center;
+    justify-content:center;
+
+    gap:8px;
+  }
+
+
+  .auth-spinner{
+
+    width:14px;
+    height:14px;
+
+    border:
+      2px solid rgba(255,255,255,.35);
+
+    border-top-color:#ffffff;
+
+    border-radius:50%;
+
+    animation:
+      auth-spin .65s linear infinite;
+  }
+
+
+  @keyframes auth-spin{
+
+    to{
+      transform:rotate(360deg);
+    }
+
+  }
+
+
+  /* ==========================================================
+     FOOTER
+     ========================================================== */
+
+  .auth-footer{
+
+    margin-top:24px;
+
+    text-align:center;
+
+    color:#aaa49c;
+
+    font-size:10px;
+
+    font-weight:500;
+
+    letter-spacing:.03em;
+  }
+
+
+  /* ==========================================================
+     ACCESS STATE
+     ========================================================== */
+
+  .access-state{
+
+    min-height:100vh;
+    min-height:100dvh;
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    justify-content:center;
+
+    text-align:center;
+
+    padding:30px;
+
+    box-sizing:border-box;
+
+    background:#f5f3ef;
+
+    color:#1c1a17;
+
+    font-family:
+      'Inter',
+      sans-serif;
+  }
+
+
+  .access-state-icon{
+
+    width:56px;
+    height:56px;
+
+    margin-bottom:18px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    border-radius:12px;
+
+    background:#ffffff;
+
+    border:1px solid #e5e1da;
+
+    color:#8e877f;
+
+    font-size:22px;
+  }
+
+
+  .access-state .eyebrow{
+
+    color:#9a938b;
+
+    font-size:11px;
+
+    font-weight:700;
+
+    text-transform:uppercase;
+
+    letter-spacing:.08em;
+  }
+
+
+  .access-state .display{
+
+    margin-top:7px;
+
+    color:#1c1a17;
+
+    font-family:
+      'Archivo',
+      sans-serif;
+
+    font-size:30px;
+
+    font-weight:800;
+
+    letter-spacing:-.03em;
+  }
+
+
+  .access-state p{
+
+    max-width:400px;
+
+    margin:10px 0 0;
+
+    color:#817a72;
+
+    font-size:13px;
+
+    line-height:1.6;
+  }
+
+
+  .access-state-btn{
+
+    margin-top:20px;
+
+    height:40px;
+
+    padding:0 18px;
+
+    border:
+      1px solid #1c1a17;
+
+    border-radius:7px;
+
+    background:#1c1a17;
+
+    color:#ffffff;
+
+    cursor:pointer;
+
+    font-size:12px;
+
+    font-weight:600;
+  }
+
+
+  /* ==========================================================
+     RESPONSIVE
+     ========================================================== */
+
+  @media(max-width:600px){
+
+    .auth-shell{
+      padding:16px;
+    }
+
+
+    .auth-card{
+
+      max-width:none;
+
+      padding:
+        30px 22px 25px;
+
+      border-radius:12px;
+
+      box-shadow:
+        0 8px 30px rgba(28,26,23,.05);
+    }
+
+
+    .auth-brand{
+      margin-bottom:28px;
+    }
+
+
+    .auth-heading h1{
+      font-size:23px;
+    }
+
+
+    .auth-input{
+      height:46px;
+    }
+
+
+    .auth-submit{
+      height:46px;
+    }
+
+  }
+
+
+  @media(max-width:380px){
+
+    .auth-card{
+      padding:
+        26px 18px 22px;
+    }
+
+    .auth-logo{
+      width:48px;
+      height:48px;
+    }
+
+  }
+
+`;
+
+
+if(
+  !document.getElementById(
+    'professional-auth-styles'
+  )
+){
+
+  document.head.appendChild(
+    authStyle
+  );
+
+}
+
+
+/* ============================================================
+   LOGOUT GLOBAL
+   ============================================================ */
+
+async function cerrarSesionSistema(){
+
+  try{
 
     await supabase.auth.signOut();
-    renderLoginUnificado();
+
+  }catch(error){
+
+    console.error(
+      'Error cerrando sesión:',
+      error
+    );
+
+  }
+
+  document.body.classList.remove(
+    'sa-login-body'
+  );
+
+  renderLoginUnificado();
+
+}
+
+
+/* ============================================================
+   PROTECCIÓN EXTRA DE PANELES
+   ============================================================
+   
+   Estas funciones NO deben confiar en botones ni URL.
+   Antes de cargar información privada, verifican nuevamente
+   el rol del usuario.
+   ============================================================ */
+
+async function obtenerRolActual(){
+
+  const {
+    data: {
+      user
+    },
+    error:userError
+  } = await supabase.auth.getUser();
+
+
+  if(userError || !user){
+    return null;
+  }
+
+
+  const {
+    data:profile,
+    error
+  } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id',user.id)
+    .single();
+
+
+  if(error || !profile){
+    return null;
+  }
+
+
+  return String(
+    profile.role || ''
+  )
+    .trim()
+    .toLowerCase();
+}
+
+
+/* ============================================================
+   GUARD DE AUTORIZACIÓN
+   ============================================================ */
+
+async function exigirRol(rolesPermitidos){
+
+  const rol =
+    await obtenerRolActual();
+
+
+  if(
+    !rol ||
+    !rolesPermitidos.includes(rol)
+  ){
+
+    app.innerHTML = `
+      <div class="access-state">
+
+        <div class="access-state-icon">
+          <i class="ti ti-shield-x"></i>
+        </div>
+
+        <div class="eyebrow">
+          Acceso denegado
+        </div>
+
+        <div class="display">
+          No autorizado
+        </div>
+
+        <p>
+          No tienes permisos para acceder
+          a este módulo.
+        </p>
+
+        <button
+          class="access-state-btn"
+          id="access-return-btn"
+        >
+          Volver a mi panel
+        </button>
+
+      </div>
+    `;
+
+
+    document
+      .getElementById(
+        'access-return-btn'
+      )
+      ?.addEventListener(
+        'click',
+        async () => {
+
+          const currentRole =
+            await obtenerRolActual();
+
+
+          if(currentRole === 'superadmin'){
+
+            renderSuperadmin();
+
+          }else if(currentRole === 'admin'){
+
+            renderAdministrador();
+
+          }else if(currentRole === 'cocina'){
+
+            renderStaff();
+
+          }else if(
+            currentRole === 'mesero' ||
+            currentRole === 'mozo'
+          ){
+
+            renderMesero();
+
+          }else{
+
+            await supabase.auth.signOut();
+
+            renderLoginUnificado();
+
+          }
+
+        }
+      );
+
+
+    return false;
+  }
+
+
+  return true;
+}
+
+
+/* ============================================================
+   EJEMPLO DE USO EN CADA PANEL
+   ============================================================
+   
+   Al principio de cada función existente puedes colocar:
+
+   renderStaff():
+       if(!(await exigirRol(['cocina','superadmin']))) return;
+
+   renderMesero():
+       if(!(await exigirRol(['mesero','mozo','superadmin']))) return;
+
+   renderAdministrador():
+       if(!(await exigirRol(['admin','superadmin']))) return;
+
+   renderSuperadmin():
+       if(!(await exigirRol(['superadmin']))) return;
+
+   NO ELIMINES las funciones existentes.
+   ============================================================ */
+
+
+/* ============================================================
+   PROTECCIÓN ESPECÍFICA PARA SUPERADMIN
+   ============================================================ */
+
+async function accesoSuperadmin(){
+
+  const autorizado =
+    await exigirRol([
+      'superadmin'
+    ]);
+
+  if(!autorizado){
     return;
   }
 
-  renderHome();
+  renderSuperadmin();
+}
+
+
+/* ============================================================
+   PROTECCIÓN ESPECÍFICA PARA ADMIN
+   ============================================================ */
+
+async function accesoAdministrador(){
+
+  const autorizado =
+    await exigirRol([
+      'admin',
+      'superadmin'
+    ]);
+
+  if(!autorizado){
+    return;
+  }
+
+  renderAdministrador();
+}
+
+
+/* ============================================================
+   PROTECCIÓN ESPECÍFICA PARA COCINA
+   ============================================================ */
+
+async function accesoCocina(){
+
+  const autorizado =
+    await exigirRol([
+      'cocina',
+      'superadmin'
+    ]);
+
+  if(!autorizado){
+    return;
+  }
+
+  renderStaff();
+}
+
+
+/* ============================================================
+   PROTECCIÓN ESPECÍFICA PARA MESERO
+   ============================================================ */
+
+async function accesoMesero(){
+
+  const autorizado =
+    await exigirRol([
+      'mesero',
+      'mozo',
+      'superadmin'
+    ]);
+
+  if(!autorizado){
+    return;
+  }
+
+  renderMesero();
+}
 })();
 </script>
 </body>
