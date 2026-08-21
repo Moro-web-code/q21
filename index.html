@@ -5496,9 +5496,12 @@ async function renderSuperadmin(){
   /* ============================================================
      LOGOUT
   ============================================================ */
-   document.getElementById('sa-logout-btn').onclick = async () => {
+  document.getElementById('sa-logout-btn').onclick = async () => {
     const btnVolver = document.getElementById('sa-back-btn');
     if(btnVolver) btnVolver.remove();
+    // Restaurar fondo original al cerrar sesión
+    document.body.style.background = '';
+    document.body.style.minHeight  = '';
     limpiarApp();
     await supabase.auth.signOut();
     renderLoginUnificado();
@@ -5516,8 +5519,10 @@ async function renderSuperadmin(){
     app.style.overflow   = '';
     app.style.background = '#f6f5f2';
     app.innerHTML        = '';
+    // Forzar fondo del body para paneles internos
+    document.body.style.background = '#f6f5f2';
+    document.body.style.minHeight  = '100vh';
   }
-
   function inyectarBotonVolver(labelPanel){
     // Espera a que el DOM del panel esté listo
     setTimeout(() => {
@@ -5557,11 +5562,13 @@ async function renderSuperadmin(){
         btn.style.transform = 'translateY(0)';
       };
       btn.onclick = async () => {
-        // Limpiar intervals del panel actual si existen
         if(window.staffInterval){
           clearInterval(window.staffInterval);
           window.staffInterval = null;
         }
+        // Restaurar fondo al volver al superadmin
+        document.body.style.background = '#1b1a18';
+        document.body.style.minHeight  = '';
         limpiarApp();
         renderSuperadmin();
       };
