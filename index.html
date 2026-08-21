@@ -5523,7 +5523,87 @@ app.innerHTML = `
     document.body.style.background = '#f6f5f2';
     document.body.style.minHeight  = '100vh';
   }
+function inyectarBotonVolver(labelPanel){
 
+  setTimeout(() => {
+
+    const existente = document.getElementById('sa-back-btn');
+
+    if(existente){
+      existente.remove();
+    }
+
+    const btn = document.createElement('button');
+
+    btn.id = 'sa-back-btn';
+
+    btn.innerHTML = `
+      <i class="ti ti-arrow-left"></i>
+      Volver a Superadmin
+    `;
+
+    btn.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 99999;
+
+      height: 40px;
+      padding: 0 16px;
+
+      display: flex;
+      align-items: center;
+      gap: 7px;
+
+      background: #1b1a18;
+      color: #f0e9d8;
+
+      border: 1px solid #3b3935;
+      border-radius: 8px;
+
+      font-family: Inter, sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+
+      cursor: pointer;
+
+      box-shadow: 0 5px 20px rgba(0,0,0,.25);
+
+      transition:
+        background .15s ease,
+        transform .15s ease;
+    `;
+
+    btn.onmouseenter = () => {
+      btn.style.background = '#302e2a';
+      btn.style.transform = 'translateY(-2px)';
+    };
+
+    btn.onmouseleave = () => {
+      btn.style.background = '#1b1a18';
+      btn.style.transform = 'translateY(0)';
+    };
+
+    btn.onclick = async () => {
+
+      if(window.staffInterval){
+        clearInterval(window.staffInterval);
+        window.staffInterval = null;
+      }
+
+      btn.remove();
+
+      limpiarApp();
+
+      await renderSuperadmin();
+
+    };
+
+    document.body.appendChild(btn);
+
+  }, 400);
+
+}
 const goAdmin = async () => {
 
   limpiarApp();
