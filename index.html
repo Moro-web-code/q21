@@ -1749,46 +1749,191 @@
      CORRECCIÓN 2: getTableByToken usa la RPC validate_qr_token
      en vez de consultar table_qr_tokens directamente.
   ============================================================ */
- async function getTableByToken(token){
+async function getTableByToken(token){
+
   const cleanToken = String(token || '').trim();
 
-  const { data, error } = await supabase.rpc('validate_qr_token', {
-    p_token: cleanToken
-  });
+  console.log('QR recibido:', cleanToken);
 
-  if(error || !data){
-    return {
-      valid: false,
-      reason: 'error'
-    };
-  }
+  if(!cleanToken){
+    console.error('No se recibió ningún token QR.');
 
-  if(!data.valid){
-    return {
-      valid: false,
-      reason: data.reason || 'qr_invalido'
-    };
-  }
-
-  const tableId = Number(data.table_id);
-
-  const mesa = MESAS.find(
-    m => Number(m.id) === tableId
-  );
-
-  if(!mesa){
     return {
       valid: false,
       reason: 'qr_invalido'
     };
   }
 
+
+  const { data, error } = await supabase.rpc(
+    'validate_qr_token',
+    {
+      p_token: cleanToken
+    }
+  );
+
+
+  console.log('Respuesta validate_qr_token:', {
+    data,
+    error
+  });
+
+
+  /* ============================================================
+     ERROR DE SUPABASE
+     ============================================================ */
+
+  if(error){
+
+    console.error(
+      'Error ejecutando validate_qr_token:',
+      error
+    );
+
+    return {
+      valid: false,
+      reason: 'error'
+    };
+  }
+
+
+  if(!data){
+
+    console.error(
+      'validate_qr_token no devolvió datos.'
+    );
+
+    return {
+      valid: false,
+      reason: 'qr_invalido'
+    };
+  }
+
+
+  /* ============================================================
+     SUPABASE PUEDE DEVOLVER:
+     
+     1. OBJETO
+        { valid:true, table_id:1 }
+
+     2. ARRAY
+        [{ valid:true, table_id:1 }]
+     
+     Normalizamos ambos casos.
+     ============================================================ */
+
+  const resultado = Array.isArray(data)
+    ? data[0]
+    : data;
+
+
+  console.log(
+    'Resultado normalizado del QR:',
+    resultado
+  );
+
+
+  if(!resultado){
+
+    console.error(
+      'El RPC devolvió un array vacío.'
+    );
+
+    return {
+      valid: false,
+      reason: 'qr_invalido'
+    };
+  }
+
+
+  /* ============================================================
+     QR NO VÁLIDO
+     ============================================================ */
+
+  if(resultado.valid !== true){
+
+    console.warn(
+      'QR rechazado por validate_qr_token:',
+      resultado
+    );
+
+    return {
+      valid: false,
+      reason: resultado.reason || 'qr_invalido'
+    };
+  }
+
+
+  /* ============================================================
+     OBTENER ID DE MESA
+     ============================================================ */
+
+  const tableId = Number(resultado.table_id);
+
+
+  if(!Number.isFinite(tableId)){
+
+    console.error(
+      'validate_qr_token devolvió un table_id inválido:',
+      resultado.table_id
+    );
+
+    return {
+      valid: false,
+      reason: 'qr_invalido'
+    };
+  }
+
+
+  console.log(
+    'Mesa indicada por el QR:',
+    tableId
+  );
+
+
+  /* ============================================================
+     BUSCAR MESA EN MESAS
+     ============================================================ */
+
+  const mesa = Array.isArray(MESAS)
+    ? MESAS.find(
+        m => Number(m.id) === tableId
+      )
+    : null;
+
+
+  if(!mesa){
+
+    console.error(
+      'El QR es válido pero la mesa no existe en MESAS.',
+      {
+        tableId,
+        MESAS
+      }
+    );
+
+    return {
+      valid: false,
+      reason: 'qr_invalido'
+    };
+  }
+
+
+  /* ============================================================
+     QR VÁLIDO
+     ============================================================ */
+
+  console.log(
+    'QR válido. Mesa:',
+    mesa
+  );
+
+
   return {
     valid: true,
     mesa
   };
 }
-
   /* ============================================================
      CORRECCIÓN 3: getTableTokens usa la RPC get_table_qr_codes
      en vez de consultar table_qr_tokens directamente.
