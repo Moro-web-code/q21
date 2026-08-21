@@ -4814,10 +4814,13 @@ async function renderSuperadmin(){
   /* ============================================================
      HTML
   ============================================================ */
-  app.innerHTML = `
-    // Eliminar botón volver si existe
-  const btnVolver = document.getElementById('sa-back-btn');
-  if(btnVolver) btnVolver.remove();
+const btnVolver = document.getElementById('sa-back-btn');
+
+if(btnVolver){
+  btnVolver.remove();
+}
+
+app.innerHTML = `
     <div id="sa-layout">
 
       <!-- SIDEBAR -->
@@ -5446,9 +5449,7 @@ async function renderSuperadmin(){
                 Administrador
               </option>
 
-              <option value="superadmin">
-                Superadmin
-              </option>
+
 
             </select>
 
@@ -5522,58 +5523,6 @@ async function renderSuperadmin(){
     // Forzar fondo del body para paneles internos
     document.body.style.background = '#f6f5f2';
     document.body.style.minHeight  = '100vh';
-  }
-  function inyectarBotonVolver(labelPanel){
-    // Espera a que el DOM del panel esté listo
-    setTimeout(() => {
-      // Evita duplicados
-      if(document.getElementById('sa-back-btn')) return;
-
-      const btn = document.createElement('button');
-      btn.id = 'sa-back-btn';
-      btn.innerHTML = '← Volver a Superadmin';
-      btn.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 9999;
-        height: 38px;
-        padding: 0 16px;
-        background: #1b1a18;
-        color: #f0e9d8;
-        border: 1px solid #3b3935;
-        border-radius: 8px;
-        font-family: Inter, sans-serif;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        box-shadow: 0 4px 16px rgba(0,0,0,.25);
-        transition: background .15s ease, transform .1s ease;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      `;
-      btn.onmouseenter = () => {
-        btn.style.background = '#302e2a';
-        btn.style.transform = 'translateY(-1px)';
-      };
-      btn.onmouseleave = () => {
-        btn.style.background = '#1b1a18';
-        btn.style.transform = 'translateY(0)';
-      };
-      btn.onclick = async () => {
-        if(window.staffInterval){
-          clearInterval(window.staffInterval);
-          window.staffInterval = null;
-        }
-        // Restaurar fondo al volver al superadmin
-        document.body.style.background = '#1b1a18';
-        document.body.style.minHeight  = '';
-        limpiarApp();
-        renderSuperadmin();
-      };
-      document.body.appendChild(btn);
-    }, 400);
   }
 
   const goAdmin = async () => {
@@ -6343,12 +6292,6 @@ async function renderSuperadmin(){
                           Administrador
                         </option>
 
-                        <option
-                          value="superadmin"
-                          ${p.role === 'superadmin' ? 'selected' : ''}
-                        >
-                          Superadmin
-                        </option>
 
                       </select>
 
@@ -6947,38 +6890,7 @@ async function renderMeseroProtegido(){
 }
 
 
-/* ============================================================
-   ACCESOS SEGUROS DEL SUPERADMIN
-   ============================================================ */
 
-const goAdminSeguro = async () => {
-
-  app.style.padding = '';
-  app.style.maxWidth = '';
-
-  await renderAdministradorProtegido();
-
-};
-
-
-const goCocinaSeguro = async () => {
-
-  app.style.padding = '';
-  app.style.maxWidth = '';
-
-  await renderCocinaProtegido();
-
-};
-
-
-const goMeseroSeguro = async () => {
-
-  app.style.padding = '';
-  app.style.maxWidth = '';
-
-  await renderMeseroProtegido();
-
-};
 })();
 </script>
 </body>
