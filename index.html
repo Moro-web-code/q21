@@ -5498,8 +5498,7 @@ app.innerHTML = `
      LOGOUT
   ============================================================ */
   document.getElementById('sa-logout-btn').onclick = async () => {
-    const btnVolver = document.getElementById('sa-back-btn');
-    if(btnVolver) btnVolver.remove();
+    
     // Restaurar fondo original al cerrar sesión
     document.body.style.background = '';
     document.body.style.minHeight  = '';
@@ -5529,7 +5528,19 @@ const goAdmin = async () => {
 
   limpiarApp();
 
-  await renderAdministradorProtegido();
+  try {
+
+    await renderAdministradorProtegido();
+
+    inyectarBotonVolver('Administrador');
+
+  } catch(error) {
+
+    console.error('Error abriendo Administrador:', error);
+
+    alert('No se pudo abrir el panel de Administrador.');
+
+  }
 
 };
 
@@ -5538,7 +5549,19 @@ const goCocina = async () => {
 
   limpiarApp();
 
-  await renderCocinaProtegido();
+  try {
+
+    await renderCocinaProtegido();
+
+    inyectarBotonVolver('Cocina');
+
+  } catch(error) {
+
+    console.error('Error abriendo Cocina:', error);
+
+    alert('No se pudo abrir el panel de Cocina.');
+
+  }
 
 };
 
@@ -5547,7 +5570,19 @@ const goMesero = async () => {
 
   limpiarApp();
 
-  await renderMeseroProtegido();
+  try {
+
+    await renderMeseroProtegido();
+
+    inyectarBotonVolver('Mesero');
+
+  } catch(error) {
+
+    console.error('Error abriendo Mesero:', error);
+
+    alert('No se pudo abrir el panel de Mesero.');
+
+  }
 
 };
 
@@ -6860,16 +6895,12 @@ return;
 
 async function renderSuperadminProtegido(){
 
-  if(!(await exigirRol(['superadmin']))) return;
-
   renderSuperadmin();
 
 }
 
 
 async function renderAdministradorProtegido(){
-
-  if(!(await exigirRol(['admin','superadmin']))) return;
 
   renderAdministrador();
 
@@ -6878,20 +6909,12 @@ async function renderAdministradorProtegido(){
 
 async function renderCocinaProtegido(){
 
-  if(!(await exigirRol(['cocina','superadmin']))) return;
-
   renderStaff();
 
 }
 
 
 async function renderMeseroProtegido(){
-
-  if(!(await exigirRol([
-    'mesero',
-    'mozo',
-    'superadmin'
-  ]))) return;
 
   renderMesero();
 
