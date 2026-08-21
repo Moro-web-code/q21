@@ -1753,19 +1753,44 @@ async function getTableByToken(token){
 
   const cleanToken = String(token || '').trim();
 
-  console.log('QR recibido:', cleanToken);
-
   if(!cleanToken){
-    console.error('No se recibió ningún token QR.');
-
     return {
-      valid: false,
-      reason: 'qr_invalido'
+      valid:false,
+      reason:'qr_invalido'
     };
   }
 
 
-  const { data, error } = await supabase.rpc(
+  /* =====================================================
+     VALIDAR FORMATO UUID ANTES DE LLAMAR A SUPABASE
+     ===================================================== */
+
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  if(!uuidRegex.test(cleanToken)){
+
+    console.error(
+      'Token QR no tiene formato UUID:',
+      cleanToken
+    );
+
+    return {
+      valid:false,
+      reason:'qr_invalido'
+    };
+
+  }
+
+
+  /* =====================================================
+     LLAMAR A LA RPC
+     ===================================================== */
+
+  const {
+    data,
+    error
+  } = await supabase.rpc(
     'validate_qr_token',
     {
       p_token: cleanToken
@@ -1773,139 +1798,86 @@ async function getTableByToken(token){
   );
 
 
-  console.log('Respuesta validate_qr_token:', {
-    data,
-    error
-  });
-
-
-  /* ============================================================
+  /* =====================================================
      ERROR DE SUPABASE
-     ============================================================ */
+     ===================================================== */
 
   if(error){
 
     console.error(
-      'Error ejecutando validate_qr_token:',
+      'Error validate_qr_token:',
       error
     );
 
     return {
-      valid: false,
-      reason: 'error'
+      valid:false,
+      reason:'error'
     };
+
   }
 
+
+  /* =====================================================
+     RESPUESTA VACÍA
+     ===================================================== */
 
   if(!data){
 
     console.error(
-      'validate_qr_token no devolvió datos.'
+      'validate_qr_token no devolvió datos'
     );
 
     return {
-      valid: false,
-      reason: 'qr_invalido'
+      valid:false,
+      reason:'qr_invalido'
     };
+
   }
 
 
-  /* ============================================================
-     SUPABASE PUEDE DEVOLVER:
-     
-     1. OBJETO
-        { valid:true, table_id:1 }
+  /* =====================================================
+     QR INVÁLIDO / MESA INACTIVA
+     ===================================================== */
 
-     2. ARRAY
-        [{ valid:true, table_id:1 }]
-     
-     Normalizamos ambos casos.
-     ============================================================ */
-
-  const resultado = Array.isArray(data)
-    ? data[0]
-    : data;
-
-
-  console.log(
-    'Resultado normalizado del QR:',
-    resultado
-  );
-
-
-  if(!resultado){
-
-    console.error(
-      'El RPC devolvió un array vacío.'
-    );
-
-    return {
-      valid: false,
-      reason: 'qr_invalido'
-    };
-  }
-
-
-  /* ============================================================
-     QR NO VÁLIDO
-     ============================================================ */
-
-  if(resultado.valid !== true){
+  if(!data.valid){
 
     console.warn(
-      'QR rechazado por validate_qr_token:',
-      resultado
+      'QR rechazado:',
+      data
     );
 
     return {
-      valid: false,
-      reason: resultado.reason || 'qr_invalido'
+      valid:false,
+      reason:data.reason || 'qr_invalido'
     };
+
   }
 
 
-  /* ============================================================
-     OBTENER ID DE MESA
-     ============================================================ */
+  /* =====================================================
+     OBTENER ID DE LA MESA
+     ===================================================== */
 
-  const tableId = Number(resultado.table_id);
-
-
-  if(!Number.isFinite(tableId)){
-
-    console.error(
-      'validate_qr_token devolvió un table_id inválido:',
-      resultado.table_id
-    );
-
-    return {
-      valid: false,
-      reason: 'qr_invalido'
-    };
-  }
+  const tableId =
+    Number(data.table_id);
 
 
-  console.log(
-    'Mesa indicada por el QR:',
-    tableId
-  );
-
-
-  /* ============================================================
+  /* =====================================================
      BUSCAR MESA EN MESAS
-     ============================================================ */
+     ===================================================== */
 
-  const mesa = Array.isArray(MESAS)
-    ? MESAS.find(
-        m => Number(m.id) === tableId
-      )
-    : null;
+  const mesa =
+    Array.isArray(MESAS)
+      ? MESAS.find(
+          m => Number(m.id) === tableId
+        )
+      : null;
 
 
   if(!mesa){
 
     console.error(
-      'El QR es válido pero la mesa no existe en MESAS.',
+      'La RPC validó el QR, pero la mesa no existe en MESAS:',
       {
         tableId,
         MESAS
@@ -1913,26 +1885,23 @@ async function getTableByToken(token){
     );
 
     return {
-      valid: false,
-      reason: 'qr_invalido'
+      valid:false,
+      reason:'qr_invalido'
     };
+
   }
 
 
-  /* ============================================================
-     QR VÁLIDO
-     ============================================================ */
-
-  console.log(
-    'QR válido. Mesa:',
-    mesa
-  );
-
+  /* =====================================================
+     TODO CORRECTO
+     ===================================================== */
 
   return {
-    valid: true,
-    mesa
+    valid:true,
+    mesa,
+    session_id:data.session_id
   };
+
 }
   /* ============================================================
      CORRECCIÓN 3: getTableTokens usa la RPC get_table_qr_codes
