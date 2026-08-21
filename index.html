@@ -4809,11 +4809,15 @@ async function renderSuperadmin(){
 
   app.style.padding = '0';
   app.style.maxWidth = 'none';
+  app.style.background = '#f6f5f2';
 
   /* ============================================================
      HTML
   ============================================================ */
   app.innerHTML = `
+    // Eliminar botón volver si existe
+  const btnVolver = document.getElementById('sa-back-btn');
+  if(btnVolver) btnVolver.remove();
     <div id="sa-layout">
 
       <!-- SIDEBAR -->
@@ -5492,12 +5496,10 @@ async function renderSuperadmin(){
   /* ============================================================
      LOGOUT
   ============================================================ */
-  document.getElementById('sa-logout-btn').onclick = async () => {
-    app.style.padding = '';
-    app.style.maxWidth = '';
-    app.style.display = '';
-    app.style.height = '';
-    app.style.overflow = '';
+   document.getElementById('sa-logout-btn').onclick = async () => {
+    const btnVolver = document.getElementById('sa-back-btn');
+    if(btnVolver) btnVolver.remove();
+    limpiarApp();
     await supabase.auth.signOut();
     renderLoginUnificado();
   };
@@ -5506,34 +5508,83 @@ async function renderSuperadmin(){
   /* ============================================================
      ACCESOS RAPIDOS
   ============================================================ */
+  function limpiarApp(){
+    app.style.padding    = '';
+    app.style.maxWidth   = '';
+    app.style.display    = '';
+    app.style.height     = '';
+    app.style.overflow   = '';
+    app.style.background = '#f6f5f2';
+    app.innerHTML        = '';
+  }
+
+  function inyectarBotonVolver(labelPanel){
+    // Espera a que el DOM del panel esté listo
+    setTimeout(() => {
+      // Evita duplicados
+      if(document.getElementById('sa-back-btn')) return;
+
+      const btn = document.createElement('button');
+      btn.id = 'sa-back-btn';
+      btn.innerHTML = '← Volver a Superadmin';
+      btn.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+        height: 38px;
+        padding: 0 16px;
+        background: #1b1a18;
+        color: #f0e9d8;
+        border: 1px solid #3b3935;
+        border-radius: 8px;
+        font-family: Inter, sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 16px rgba(0,0,0,.25);
+        transition: background .15s ease, transform .1s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      `;
+      btn.onmouseenter = () => {
+        btn.style.background = '#302e2a';
+        btn.style.transform = 'translateY(-1px)';
+      };
+      btn.onmouseleave = () => {
+        btn.style.background = '#1b1a18';
+        btn.style.transform = 'translateY(0)';
+      };
+      btn.onclick = async () => {
+        // Limpiar intervals del panel actual si existen
+        if(window.staffInterval){
+          clearInterval(window.staffInterval);
+          window.staffInterval = null;
+        }
+        limpiarApp();
+        renderSuperadmin();
+      };
+      document.body.appendChild(btn);
+    }, 400);
+  }
+
   const goAdmin = async () => {
-    app.style.padding = '';
-    app.style.maxWidth = '';
-    app.style.display = '';
-    app.style.height = '';
-    app.style.overflow = '';
-    app.innerHTML = '';
+    limpiarApp();
     await renderAdministradorProtegido();
+    inyectarBotonVolver('Administrador');
   };
 
   const goCocina = async () => {
-    app.style.padding = '';
-    app.style.maxWidth = '';
-    app.style.display = '';
-    app.style.height = '';
-    app.style.overflow = '';
-    app.innerHTML = '';
+    limpiarApp();
     await renderCocinaProtegido();
+    inyectarBotonVolver('Cocina');
   };
 
   const goMesero = async () => {
-    app.style.padding = '';
-    app.style.maxWidth = '';
-    app.style.display = '';
-    app.style.height = '';
-    app.style.overflow = '';
-    app.innerHTML = '';
+    limpiarApp();
     await renderMeseroProtegido();
+    inyectarBotonVolver('Mesero');
   };
 
 
