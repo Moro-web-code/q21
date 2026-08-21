@@ -3666,7 +3666,9 @@ async function renderAdministrador(){
   });
 
   document.getElementById('adash-refresh-btn').onclick = () => cargarPagina(paginaActual);
-
+  document.getElementById('adash-add-btn').onclick = () => {
+  abrirModalProducto();
+  };
   /* ── Carga de datos por página ── */
   async function cargarPagina(key){
     if(key === 'inicio') await cargarInicio();
@@ -3846,13 +3848,506 @@ async function renderAdministrador(){
               </div>
             </div>
             <div class="mc-actions">
-              <button class="mc-action-btn">Editar</button>
-              <button class="mc-action-btn del" data-id="${p.id}">Eliminar</button>
-            </div>
+  <button
+    class="mc-action-btn edit-product-btn"
+    data-id="${p.id}">
+    Editar
+  </button>
+
+  <button
+    class="mc-action-btn del delete-product-btn"
+    data-id="${p.id}">
+    Eliminar
+  </button>
+</div>
           </div>`).join('')}
       </div>`).join('');
-  }
+        /* ============================================================
+       EDITAR PRODUCTO
+    ============================================================ */
 
+    el.querySelectorAll('.edit-product-btn').forEach(btn => {
+
+      btn.onclick = async () => {
+
+        const id = btn.dataset.id;
+
+        const producto = items.find(p => String(p.id) === String(id));
+
+        if(!producto) return;
+
+        abrirModalProducto(producto);
+
+      };
+
+    });
+
+
+    /* ============================================================
+       ELIMINAR PRODUCTO
+    ============================================================ */
+
+    el.querySelectorAll('.delete-product-btn').forEach(btn => {
+
+      btn.onclick = async () => {
+
+        const id = btn.dataset.id;
+
+        const producto = items.find(p => String(p.id) === String(id));
+
+        if(!producto) return;
+
+        const confirmar = confirm(
+          `¿Seguro que deseas eliminar "${producto.name}"?`
+        );
+
+        if(!confirmar) return;
+
+        btn.disabled = true;
+        btn.textContent = 'Eliminando…';
+
+        const { error } = await supabase
+          .from('menu_items')
+          .delete()
+          .eq('id', id);
+
+        if(error){
+
+          console.error('Error eliminando producto:', error);
+
+          alert(
+            'No se pudo eliminar el producto.\n\n' +
+            error.message
+          );
+
+          btn.disabled = false;
+          btn.textContent = 'Eliminar';
+
+          return;
+        }
+
+        await cargarMenu();
+
+      };
+
+    });
+  }
+  /* ============================================================
+     MODAL PRODUCTO
+  ============================================================ */
+
+  function abrirModalProducto(producto = null){
+
+    const editando = !!producto;
+
+    const overlay = document.createElement('div');
+
+    overlay.id = 'admin-product-modal';
+
+    overlay.style.cssText = `
+      position:fixed;
+      inset:0;
+      background:rgba(20,18,15,.55);
+      backdrop-filter:blur(5px);
+      z-index:9999;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      box-sizing:border-box;
+    `;
+
+    overlay.innerHTML = `
+
+      <div style="
+        width:min(480px,100%);
+        background:#fff;
+        border-radius:12px;
+        border:1px solid #e7e4de;
+        box-shadow:0 25px 70px rgba(0,0,0,.20);
+        overflow:hidden;
+      ">
+
+        <div style="
+          padding:18px 20px;
+          border-bottom:1px solid #e7e4de;
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+        ">
+
+          <div>
+            <div style="
+              font-family:Archivo,sans-serif;
+              font-size:15px;
+              font-weight:800;
+              color:#181715;
+            ">
+              ${editando ? 'Editar producto' : 'Añadir producto'}
+            </div>
+
+            <div style="
+              margin-top:4px;
+              font-size:10px;
+              color:#918b83;
+            ">
+              ${editando
+                ? 'Modifica la información del producto'
+                : 'Añade un nuevo producto al menú'}
+            </div>
+          </div>
+
+          <button
+            id="admin-product-close"
+            style="
+              width:30px;
+              height:30px;
+              border:0;
+              border-radius:6px;
+              background:#f5f3ef;
+              color:#6b6560;
+              cursor:pointer;
+              font-size:18px;
+            "
+          >
+            ×
+          </button>
+
+        </div>
+
+
+        <div style="padding:20px;">
+
+          <div style="margin-bottom:14px;">
+
+            <label style="
+              display:block;
+              margin-bottom:6px;
+              font-size:10px;
+              font-weight:700;
+              color:#625d56;
+              text-transform:uppercase;
+            ">
+              Nombre
+            </label>
+
+            <input
+              id="admin-product-name"
+              type="text"
+              value="${esc(producto?.name || '')}"
+              placeholder="Ej. Lomo saltado"
+              style="
+                width:100%;
+                height:40px;
+                padding:0 11px;
+                box-sizing:border-box;
+                border:1px solid #ddd9d2;
+                border-radius:7px;
+                outline:none;
+                font-family:inherit;
+              "
+            >
+
+          </div>
+
+
+          <div style="margin-bottom:14px;">
+
+            <label style="
+              display:block;
+              margin-bottom:6px;
+              font-size:10px;
+              font-weight:700;
+              color:#625d56;
+              text-transform:uppercase;
+            ">
+              Categoría
+            </label>
+
+            <input
+              id="admin-product-category"
+              type="text"
+              value="${esc(producto?.category || '')}"
+              placeholder="Ej. Platos"
+              style="
+                width:100%;
+                height:40px;
+                padding:0 11px;
+                box-sizing:border-box;
+                border:1px solid #ddd9d2;
+                border-radius:7px;
+                outline:none;
+                font-family:inherit;
+              "
+            >
+
+          </div>
+
+
+          <div style="margin-bottom:14px;">
+
+            <label style="
+              display:block;
+              margin-bottom:6px;
+              font-size:10px;
+              font-weight:700;
+              color:#625d56;
+              text-transform:uppercase;
+            ">
+              Precio
+            </label>
+
+            <input
+              id="admin-product-price"
+              type="number"
+              step="0.01"
+              min="0"
+              value="${producto?.price ?? ''}"
+              placeholder="0.00"
+              style="
+                width:100%;
+                height:40px;
+                padding:0 11px;
+                box-sizing:border-box;
+                border:1px solid #ddd9d2;
+                border-radius:7px;
+                outline:none;
+                font-family:inherit;
+              "
+            >
+
+          </div>
+
+
+          <div style="margin-bottom:14px;">
+
+            <label style="
+              display:block;
+              margin-bottom:6px;
+              font-size:10px;
+              font-weight:700;
+              color:#625d56;
+              text-transform:uppercase;
+            ">
+              Descripción
+            </label>
+
+            <textarea
+              id="admin-product-description"
+              placeholder="Descripción del producto"
+              style="
+                width:100%;
+                min-height:80px;
+                padding:10px 11px;
+                box-sizing:border-box;
+                border:1px solid #ddd9d2;
+                border-radius:7px;
+                outline:none;
+                resize:vertical;
+                font-family:inherit;
+              "
+            >${esc(producto?.description || '')}</textarea>
+
+          </div>
+
+
+          <label style="
+            display:flex;
+            align-items:center;
+            gap:9px;
+            font-size:11px;
+            color:#4e4943;
+            cursor:pointer;
+            margin-bottom:20px;
+          ">
+
+            <input
+              id="admin-product-active"
+              type="checkbox"
+              ${producto?.active !== false ? 'checked' : ''}
+            >
+
+            Producto disponible
+
+          </label>
+
+
+          <div style="
+            display:flex;
+            gap:8px;
+            justify-content:flex-end;
+          ">
+
+            <button
+              id="admin-product-cancel"
+              style="
+                height:38px;
+                padding:0 15px;
+                border:1px solid #ddd9d2;
+                border-radius:7px;
+                background:#fff;
+                color:#6b6560;
+                cursor:pointer;
+              "
+            >
+              Cancelar
+            </button>
+
+            <button
+              id="admin-product-save"
+              style="
+                height:38px;
+                padding:0 17px;
+                border:1px solid #1d1c1a;
+                border-radius:7px;
+                background:#1d1c1a;
+                color:#fff;
+                cursor:pointer;
+                font-weight:700;
+              "
+            >
+              ${editando ? 'Guardar cambios' : 'Añadir producto'}
+            </button>
+
+          </div>
+
+          <div
+            id="admin-product-error"
+            style="
+              min-height:18px;
+              margin-top:10px;
+              color:#a9472f;
+              font-size:11px;
+            "
+          ></div>
+
+        </div>
+
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+
+    const cerrar = () => {
+      overlay.remove();
+    };
+
+
+    document.getElementById('admin-product-close').onclick = cerrar;
+    document.getElementById('admin-product-cancel').onclick = cerrar;
+
+
+    document.getElementById('admin-product-save').onclick =
+      async () => {
+
+        const name =
+          document.getElementById('admin-product-name').value.trim();
+
+        const category =
+          document.getElementById('admin-product-category').value.trim();
+
+        const price =
+          Number(document.getElementById('admin-product-price').value);
+
+        const description =
+          document.getElementById('admin-product-description').value.trim();
+
+        const active =
+          document.getElementById('admin-product-active').checked;
+
+        const errorEl =
+          document.getElementById('admin-product-error');
+
+        const saveBtn =
+          document.getElementById('admin-product-save');
+
+
+        errorEl.textContent = '';
+
+
+        if(!name){
+
+          errorEl.textContent = 'El nombre es obligatorio.';
+          return;
+
+        }
+
+        if(!category){
+
+          errorEl.textContent = 'La categoría es obligatoria.';
+          return;
+
+        }
+
+        if(!Number.isFinite(price) || price < 0){
+
+          errorEl.textContent = 'Ingresa un precio válido.';
+          return;
+
+        }
+
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Guardando…';
+
+
+        const datos = {
+          name,
+          category,
+          price,
+          description,
+          active
+        };
+
+
+        let resultado;
+
+
+        if(editando){
+
+          resultado = await supabase
+            .from('menu_items')
+            .update(datos)
+            .eq('id', producto.id);
+
+        }else{
+
+          resultado = await supabase
+            .from('menu_items')
+            .insert(datos);
+
+        }
+
+
+        if(resultado.error){
+
+          console.error(
+            'Error guardando producto:',
+            resultado.error
+          );
+
+          errorEl.textContent =
+            resultado.error.message;
+
+          saveBtn.disabled = false;
+          saveBtn.textContent =
+            editando
+              ? 'Guardar cambios'
+              : 'Añadir producto';
+
+          return;
+
+        }
+
+
+        cerrar();
+
+        await cargarMenu();
+
+      };
+
+  }
   /* ── QR ── */
   async function cargarQR(){
     const tokens = await getTableTokens();
