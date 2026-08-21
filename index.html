@@ -5525,23 +5525,31 @@ app.innerHTML = `
     document.body.style.minHeight  = '100vh';
   }
 
-  const goAdmin = async () => {
-    limpiarApp();
-    await renderAdministradorProtegido();
-    inyectarBotonVolver('Administrador');
-  };
+const goAdmin = async () => {
 
-  const goCocina = async () => {
-    limpiarApp();
-    await renderCocinaProtegido();
-    inyectarBotonVolver('Cocina');
-  };
+  limpiarApp();
 
-  const goMesero = async () => {
-    limpiarApp();
-    await renderMeseroProtegido();
-    inyectarBotonVolver('Mesero');
-  };
+  await renderAdministradorProtegido();
+
+};
+
+
+const goCocina = async () => {
+
+  limpiarApp();
+
+  await renderCocinaProtegido();
+
+};
+
+
+const goMesero = async () => {
+
+  limpiarApp();
+
+  await renderMeseroProtegido();
+
+};
 
 
   [
