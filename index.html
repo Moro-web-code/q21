@@ -5493,12 +5493,12 @@ async function renderSuperadmin(){
      LOGOUT
   ============================================================ */
   document.getElementById('sa-logout-btn').onclick = async () => {
-
     app.style.padding = '';
     app.style.maxWidth = '';
-
+    app.style.display = '';
+    app.style.height = '';
+    app.style.overflow = '';
     await supabase.auth.signOut();
-
     renderLoginUnificado();
   };
 
@@ -5506,21 +5506,33 @@ async function renderSuperadmin(){
   /* ============================================================
      ACCESOS RAPIDOS
   ============================================================ */
-   const goAdmin = async () => {
+  const goAdmin = async () => {
     app.style.padding = '';
     app.style.maxWidth = '';
+    app.style.display = '';
+    app.style.height = '';
+    app.style.overflow = '';
+    app.innerHTML = '';
     await renderAdministradorProtegido();
   };
 
   const goCocina = async () => {
     app.style.padding = '';
     app.style.maxWidth = '';
+    app.style.display = '';
+    app.style.height = '';
+    app.style.overflow = '';
+    app.innerHTML = '';
     await renderCocinaProtegido();
   };
 
   const goMesero = async () => {
     app.style.padding = '';
     app.style.maxWidth = '';
+    app.style.display = '';
+    app.style.height = '';
+    app.style.overflow = '';
+    app.innerHTML = '';
     await renderMeseroProtegido();
   };
 
