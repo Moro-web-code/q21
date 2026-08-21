@@ -2341,110 +2341,300 @@ async function renderAdministrador(){
 ============================================================ */
 async function renderSuperadmin(){
   const { data:{ session } } = await supabase.auth.getSession();
-  if(!session){ renderAdministradorLogin(); return; }
+  if(!session){ renderLoginUnificado(); return; }
 
   if(!document.getElementById('sa-style')){
     const st = document.createElement('style');
     st.id = 'sa-style';
     st.textContent = `
       #sa-layout{ display:flex; height:100vh; overflow:hidden; font-family:'JetBrains Mono',monospace; }
-      #sa-sidebar{ width:230px; min-width:230px; background:#111009; border-right:1px solid #1e1c18; display:flex; flex-direction:column; }
-      .sa-sb-brand{ padding:20px 18px 16px; border-bottom:1px solid #1e1c18; }
-      .sa-sb-logo{ display:flex; align-items:center; gap:10px; }
-      .sa-sb-box{ width:30px; height:30px; background:#1a1814; border:1px solid #2e2b25; border-radius:6px; display:flex; align-items:center; justify-content:center; font-family:'Archivo',sans-serif; font-weight:900; font-size:12px; color:#8a8278; }
-      .sa-sb-name{ font-family:'Archivo',sans-serif; font-weight:900; font-size:14px; color:#f0e9d8; }
-      .sa-sb-sub{ font-size:10px; color:#55504a; margin-top:1px; }
-      .sa-sb-nav{ padding:10px 8px; flex:1; overflow-y:auto; }
-      .sa-sb-section{ font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:#2e2b25; padding:12px 10px 6px; }
-      .sa-sb-item{ display:flex; align-items:center; gap:9px; padding:9px 10px; border-radius:6px; cursor:pointer; color:#55504a; font-size:12px; margin-bottom:1px; transition:background .12s,color .12s; border:none; background:none; width:100%; text-align:left; font-family:'JetBrains Mono',monospace; }
-      .sa-sb-item:hover{ background:#1a1814; color:#8a8278; }
-      .sa-sb-item.active{ background:#1e1c18; color:#f0e9d8; }
-      .sa-sb-item i{ font-size:15px; width:16px; text-align:center; }
-      .sa-sb-footer{ padding:14px 16px; border-top:1px solid #1e1c18; }
-      .sa-sb-user{ display:flex; align-items:center; gap:10px; }
-      .sa-sb-avatar{ width:28px; height:28px; border-radius:50%; background:#1e1c18; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#55504a; }
-      .sa-sb-uname{ font-size:11.5px; color:#8a8278; }
-      .sa-sb-urole{ font-size:9px; color:#55504a; }
 
+      /* SIDEBAR */
+      #sa-sidebar{
+        width:240px; min-width:240px;
+        background:#0f0e0c;
+        border-right:1px solid #1e1c18;
+        display:flex; flex-direction:column;
+        transition:width .2s;
+      }
+      .sa-brand{ padding:22px 18px 18px; border-bottom:1px solid #1e1c18; }
+      .sa-brand-logo{ display:flex; align-items:center; gap:10px; }
+      .sa-brand-mark{
+        width:32px; height:32px;
+        background:#1a1814;
+        border:1px solid #2e2b25;
+        border-radius:8px;
+        display:flex; align-items:center; justify-content:center;
+        font-family:'Archivo',sans-serif; font-weight:900; font-size:12px;
+        color:#55504a;
+        flex-shrink:0;
+      }
+      .sa-brand-text .sa-brand-name{ font-family:'Archivo',sans-serif; font-weight:900; font-size:14px; color:#f0e9d8; }
+      .sa-brand-text .sa-brand-sub{ font-size:10px; color:#3a362f; margin-top:1px; }
+
+      .sa-nav{ padding:12px 8px; flex:1; overflow-y:auto; }
+      .sa-nav::-webkit-scrollbar{ width:3px; }
+      .sa-nav::-webkit-scrollbar-thumb{ background:#1e1c18; }
+      .sa-nav-section{ font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:#2e2b25; padding:10px 10px 6px; font-weight:500; }
+      .sa-nav-item{
+        display:flex; align-items:center; gap:10px;
+        padding:9px 10px; border-radius:6px;
+        cursor:pointer; color:#4a453d; font-size:12.5px;
+        margin-bottom:1px; transition:background .12s,color .12s;
+        border:none; background:none; width:100%; text-align:left;
+        font-family:'JetBrains Mono',monospace;
+      }
+      .sa-nav-item i{ font-size:16px; width:18px; text-align:center; flex-shrink:0; }
+      .sa-nav-item:hover{ background:#1a1814; color:#8a8278; }
+      .sa-nav-item.active{ background:#1e1c18; color:#f0e9d8; }
+      .sa-nav-item.active i{ color:#f0e9d8; }
+      .sa-nav-divider{ height:1px; background:#1e1c18; margin:8px 10px; }
+
+      .sa-sidebar-footer{
+        padding:14px 16px;
+        border-top:1px solid #1e1c18;
+        display:flex; align-items:center; gap:10px;
+      }
+      .sa-sidebar-avatar{
+        width:30px; height:30px; border-radius:50%;
+        background:#1e1c18; border:1px solid #2e2b25;
+        display:flex; align-items:center; justify-content:center;
+        font-size:11px; font-weight:700; color:#4a453d;
+        flex-shrink:0;
+      }
+      .sa-sidebar-uname{ font-size:12px; color:#8a8278; }
+      .sa-sidebar-urole{ font-size:10px; color:#3a362f; }
+
+      /* MAIN */
       #sa-main{ flex:1; display:flex; flex-direction:column; overflow:hidden; background:#f5f3ef; }
-      #sa-topbar{ height:52px; background:#fff; border-bottom:1px solid #e8e4dc; display:flex; align-items:center; justify-content:space-between; padding:0 24px; flex-shrink:0; }
-      .sa-tb-title{ font-family:'Archivo',sans-serif; font-weight:900; font-size:14px; color:#1c1a17; }
-      .sa-tb-right{ display:flex; align-items:center; gap:8px; }
-      .sa-btn{ background:#fff; border:1px solid #e8e4dc; border-radius:6px; padding:6px 14px; font-size:11.5px; font-weight:500; color:#6b6560; cursor:pointer; font-family:'JetBrains Mono',monospace; display:flex; align-items:center; gap:6px; }
-      .sa-btn:hover{ border-color:#c8c4bc; color:#1c1a17; }
-      .sa-btn.primary{ background:#1c1a17; color:#f0e9d8; border-color:#1c1a17; }
-      .sa-btn.danger{ background:#fdf1ed; color:#c1502e; border-color:#f0c4b4; }
 
-      #sa-content{ flex:1; overflow-y:auto; padding:24px; }
+      #sa-topbar{
+        height:54px; background:#fff;
+        border-bottom:1px solid #e8e4dc;
+        display:flex; align-items:center; justify-content:space-between;
+        padding:0 26px; flex-shrink:0;
+      }
+      .sa-topbar-title{ font-family:'Archivo',sans-serif; font-weight:900; font-size:15px; color:#1c1a17; letter-spacing:-.01em; }
+      .sa-topbar-right{ display:flex; align-items:center; gap:10px; }
+      .sa-topbar-date{
+        background:#f5f3ef; border:1px solid #e8e4dc;
+        border-radius:999px; font-size:11px; color:#6b6560; padding:4px 12px;
+      }
+      .sa-tbtn{
+        background:#fff; border:1px solid #e8e4dc; border-radius:6px;
+        padding:7px 14px; font-size:12px; font-weight:500; color:#6b6560;
+        cursor:pointer; display:flex; align-items:center; gap:6px;
+        font-family:'JetBrains Mono',monospace;
+        transition:border-color .12s, color .12s;
+      }
+      .sa-tbtn:hover{ border-color:#c8c4bc; color:#1c1a17; }
+      .sa-tbtn.primary{ background:#1c1a17; color:#f0e9d8; border-color:#1c1a17; }
+      .sa-tbtn.primary:hover{ background:#2e2b25; }
+      .sa-tbtn.danger{ background:#fdf1ed; color:#c1502e; border-color:#f0c4b4; }
+
+      #sa-content{ flex:1; overflow-y:auto; padding:26px; }
       #sa-content::-webkit-scrollbar{ width:4px; }
       #sa-content::-webkit-scrollbar-thumb{ background:#d4cfc4; border-radius:4px; }
 
       .sa-page{ display:none; }
       .sa-page.active{ display:block; }
 
-      .sa-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:22px; }
-      .sa-stat{ background:#fff; border:1px solid #e8e4dc; border-radius:10px; padding:16px 18px; }
-      .sa-stat-label{ font-size:11px; color:#9e9890; font-weight:500; margin-bottom:6px; }
-      .sa-stat-val{ font-family:'Archivo',sans-serif; font-weight:900; font-size:24px; color:#1c1a17; letter-spacing:-.02em; }
-      .sa-stat-sub{ font-size:11px; color:#9e9890; margin-top:4px; }
-
-      .sa-section-card{ background:#fff; border:1px solid #e8e4dc; border-radius:12px; overflow:hidden; margin-bottom:18px; }
-      .sa-sc-head{ padding:14px 18px; border-bottom:1px solid #f0ede8; display:flex; align-items:center; justify-content:space-between; }
-      .sa-sc-title{ font-size:13px; font-weight:600; color:#1c1a17; font-family:'Archivo',sans-serif; }
-      .sa-sc-sub{ font-size:11px; color:#9e9890; margin-top:2px; }
-      .sa-sc-body{ padding:16px 18px; }
-
-      .sa-acceso-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
-      .sa-acceso-card{ border:1px solid #e8e4dc; border-radius:10px; padding:18px; }
-      .sa-acceso-icon{ width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; margin-bottom:12px; }
-      .sa-acceso-card-title{ font-size:13px; font-weight:600; color:#1c1a17; font-family:'Archivo',sans-serif; margin-bottom:4px; }
-      .sa-acceso-card-sub{ font-size:11.5px; color:#9e9890; margin-bottom:14px; line-height:1.5; }
-
-      .sa-ph{ display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
-      .sa-ph-title{ font-family:'Archivo',sans-serif; font-weight:900; font-size:20px; color:#1c1a17; }
+      /* PAGE HEADER */
+      .sa-ph{ display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:22px; }
+      .sa-ph-title{ font-family:'Archivo',sans-serif; font-weight:900; font-size:20px; color:#1c1a17; letter-spacing:-.02em; }
       .sa-ph-sub{ font-size:12px; color:#9e9890; margin-top:3px; }
 
-      .sa-table{ width:100%; border-collapse:collapse; }
-      .sa-table th{ text-align:left; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:#9e9890; font-weight:500; padding:0 16px 10px; }
-      .sa-table td{ padding:12px 16px; border-top:1px solid #f0ede8; font-size:12.5px; color:#1c1a17; vertical-align:middle; }
-      .sa-table tr:hover td{ background:#faf9f7; }
-      .sa-user-name{ font-weight:500; color:#1c1a17; }
-      .sa-user-email{ font-size:11px; color:#9e9890; margin-top:1px; }
-      .sa-role-badge{ display:inline-block; font-size:10px; font-weight:600; padding:2px 9px; border-radius:999px; }
-      .sa-role-superadmin{ background:#1c1a17; color:#f0e9d8; }
-      .sa-role-admin{ background:#fdf1ed; color:#c1502e; }
-      .sa-role-mozo{ background:#edf4ec; color:#4a6e48; }
-      .sa-role-cocina{ background:#fdf8ec; color:#c49520; }
-      .sa-status-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px; }
-      .sa-dot-active{ background:#4a6e48; }
-      .sa-dot-inactive{ background:#c8c5c0; }
-      .sa-actions{ display:flex; gap:6px; }
-      .sa-action-btn{ padding:5px 12px; border-radius:6px; font-size:11px; font-weight:500; cursor:pointer; border:1px solid #e8e4dc; background:#f5f3ef; color:#6b6560; font-family:'JetBrains Mono',monospace; }
-      .sa-action-btn.del{ color:#c1502e; border-color:#f0c4b4; background:#fdf1ed; }
+      /* STATS */
+      .sa-stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:13px; margin-bottom:24px; }
+      .sa-stat{
+        background:#fff; border:1px solid #e8e4dc; border-radius:10px;
+        padding:16px 18px; position:relative; overflow:hidden;
+      }
+      .sa-stat-accent{
+        position:absolute; top:0; left:0; width:3px; height:100%;
+        border-radius:10px 0 0 10px;
+      }
+      .sa-stat-label{ font-size:11px; color:#9e9890; font-weight:500; letter-spacing:.02em; margin-bottom:8px; }
+      .sa-stat-val{ font-family:'Archivo',sans-serif; font-weight:900; font-size:26px; color:#1c1a17; letter-spacing:-.02em; line-height:1; }
+      .sa-stat-sub{ font-size:11px; color:#9e9890; margin-top:5px; }
+      .sa-stat-icon{
+        position:absolute; top:14px; right:14px;
+        width:32px; height:32px; border-radius:8px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:16px;
+      }
 
-      .sa-permisos-table{ width:100%; border-collapse:collapse; }
-      .sa-permisos-table th{ text-align:left; font-size:11px; color:#9e9890; font-weight:500; padding:8px 14px; border-bottom:1px solid #e8e4dc; }
-      .sa-permisos-table th:not(:first-child){ text-align:center; }
-      .sa-permisos-table td{ padding:10px 14px; border-bottom:1px solid #f5f3ef; font-size:12.5px; color:#1c1a17; }
-      .sa-permisos-table td:not(:first-child){ text-align:center; }
-      .sa-check{ color:#4a6e48; font-size:15px; }
-      .sa-dash{ color:#c8c5c0; font-size:15px; }
+      /* SECTION CARD */
+      .sa-card{ background:#fff; border:1px solid #e8e4dc; border-radius:12px; overflow:hidden; margin-bottom:20px; }
+      .sa-card-head{
+        padding:14px 20px; border-bottom:1px solid #f0ede8;
+        display:flex; align-items:center; justify-content:space-between;
+      }
+      .sa-card-title{ font-size:13.5px; font-weight:600; color:#1c1a17; font-family:'Archivo',sans-serif; }
+      .sa-card-sub{ font-size:11px; color:#9e9890; margin-top:2px; }
+      .sa-card-body{ padding:18px 20px; }
+
+      /* ACCESOS RAPIDOS */
+      .sa-acceso-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+      .sa-acceso-card{
+        border:1px solid #e8e4dc; border-radius:10px;
+        padding:20px 18px; cursor:default;
+        transition:border-color .14s, box-shadow .14s;
+      }
+      .sa-acceso-card:hover{ border-color:#c8c4bc; box-shadow:0 4px 12px rgba(0,0,0,.05); }
+      .sa-acceso-icon{
+        width:40px; height:40px; border-radius:10px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:20px; margin-bottom:14px;
+      }
+      .sa-acceso-title{ font-family:'Archivo',sans-serif; font-weight:900; font-size:14px; color:#1c1a17; margin-bottom:5px; }
+      .sa-acceso-desc{ font-size:12px; color:#9e9890; line-height:1.5; margin-bottom:16px; }
+      .sa-acceso-btn{
+        width:100%; padding:9px; border-radius:7px;
+        font-size:12px; font-weight:600; cursor:pointer; border:none;
+        font-family:'JetBrains Mono',monospace;
+        display:flex; align-items:center; justify-content:center; gap:6px;
+        transition:opacity .12s;
+      }
+      .sa-acceso-btn:hover{ opacity:.88; }
+      .sa-btn-rust{ background:#c1502e; color:#fff; }
+      .sa-btn-mustard{ background:#c49520; color:#1a1400; }
+      .sa-btn-sage{ background:#5c7a5a; color:#fff; }
+
+      /* USUARIOS */
+      .sa-table-wrap{ overflow-x:auto; }
+      .sa-table{ width:100%; border-collapse:collapse; }
+      .sa-table th{
+        text-align:left; font-size:10.5px; letter-spacing:.08em;
+        text-transform:uppercase; color:#9e9890; font-weight:500;
+        padding:0 16px 12px;
+      }
+      .sa-table td{
+        padding:13px 16px; border-top:1px solid #f0ede8;
+        font-size:12.5px; color:#1c1a17; vertical-align:middle;
+      }
+      .sa-table tr:hover td{ background:#faf9f7; }
+      .sa-td-name{ font-weight:500; font-size:13px; }
+      .sa-td-id{ font-size:10px; color:#9e9890; font-family:monospace; margin-top:2px; }
+      .sa-role-pill{
+        display:inline-flex; align-items:center; gap:5px;
+        font-size:10.5px; font-weight:600; padding:3px 10px;
+        border-radius:999px;
+      }
+      .srp-superadmin{ background:#1c1a17; color:#f0e9d8; }
+      .srp-admin{ background:#fdf1ed; color:#c1502e; }
+      .srp-mozo{ background:#edf4ec; color:#4a6e48; }
+      .srp-cocina{ background:#fdf8ec; color:#c49520; }
+      .sa-td-actions{ display:flex; align-items:center; gap:6px; }
+      .sa-action-sel{
+        padding:5px 10px; border-radius:6px; font-size:11px;
+        border:1px solid #e8e4dc; background:#f5f3ef; color:#6b6560;
+        font-family:'JetBrains Mono',monospace; cursor:pointer; outline:none;
+      }
+      .sa-action-btn{
+        padding:5px 12px; border-radius:6px; font-size:11px; font-weight:500;
+        cursor:pointer; border:1px solid #e8e4dc; background:#f5f3ef;
+        color:#6b6560; font-family:'JetBrains Mono',monospace;
+        transition:background .1s, color .1s;
+      }
+      .sa-action-btn:hover{ background:#ebe8e2; color:#1c1a17; }
+      .sa-action-btn.save{ background:#1c1a17; color:#f0e9d8; border-color:#1c1a17; }
+
+      /* PERMISOS TABLE */
+      .sa-perms-table{ width:100%; border-collapse:collapse; }
+      .sa-perms-table th{
+        text-align:left; font-size:11px; color:#9e9890; font-weight:500;
+        padding:8px 14px; border-bottom:1px solid #e8e4dc;
+      }
+      .sa-perms-table th:not(:first-child){ text-align:center; }
+      .sa-perms-table td{ padding:11px 14px; border-bottom:1px solid #f5f3ef; font-size:12.5px; color:#1c1a17; }
+      .sa-perms-table td:not(:first-child){ text-align:center; }
+      .sa-perms-table tr:hover td{ background:#faf9f7; }
+      .sa-check{ color:#4a6e48; font-size:16px; font-weight:700; }
+      .sa-dash{ color:#d4cfc4; font-size:16px; }
+
+      /* MODAL */
+      .sa-overlay{
+        display:none; position:fixed; inset:0;
+        background:rgba(0,0,0,.4); z-index:200;
+        align-items:center; justify-content:center;
+        backdrop-filter:blur(2px);
+      }
+      .sa-overlay.open{ display:flex; }
+      .sa-modal{
+        background:#fff; border-radius:14px;
+        width:min(460px,94vw);
+        box-shadow:0 24px 60px rgba(0,0,0,.14);
+        overflow:hidden;
+        animation:sa-modal-in .18s ease;
+      }
+      @keyframes sa-modal-in{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
+      .sa-modal-head{
+        padding:20px 24px 16px;
+        border-bottom:1px solid #e8e4dc;
+        display:flex; align-items:center; justify-content:space-between;
+      }
+      .sa-modal-title{ font-family:'Archivo',sans-serif; font-weight:900; font-size:17px; color:#1c1a17; }
+      .sa-modal-close{
+        background:none; border:none; cursor:pointer;
+        color:#9e9890; font-size:20px; padding:2px; line-height:1;
+      }
+      .sa-modal-close:hover{ color:#1c1a17; }
+      .sa-modal-body{ padding:22px 24px; }
+      .sa-field{ margin-bottom:16px; }
+      .sa-label{ display:block; font-size:12px; font-weight:500; color:#6b6560; margin-bottom:6px; }
+      .sa-input{
+        width:100%; padding:10px 13px;
+        border:1px solid #e8e4dc; border-radius:7px;
+        font-size:13px; color:#1c1a17; font-family:'JetBrains Mono',monospace;
+        outline:none; transition:border-color .12s; background:#fff;
+      }
+      .sa-input:focus{ border-color:#9e9890; }
+      .sa-input.error{ border-color:#c1502e; }
+      .sa-input-wrap{ position:relative; }
+      .sa-eye{
+        position:absolute; right:10px; top:50%; transform:translateY(-50%);
+        background:none; border:none; cursor:pointer; color:#9e9890; font-size:16px;
+        display:flex; align-items:center; padding:2px;
+      }
+      .sa-select{
+        width:100%; padding:10px 13px;
+        border:1px solid #e8e4dc; border-radius:7px;
+        font-size:13px; color:#1c1a17; font-family:'JetBrains Mono',monospace;
+        outline:none; background:#fff; cursor:pointer;
+      }
+      .sa-select:focus{ border-color:#9e9890; }
+      .sa-modal-error{ font-size:12px; color:#c1502e; margin-top:10px; min-height:16px; }
+      .sa-modal-foot{
+        padding:0 24px 22px;
+        display:flex; gap:8px; justify-content:flex-end;
+      }
+
+      /* ACTIVIDAD */
+      .sa-activity-list{ display:flex; flex-direction:column; gap:10px; }
+      .sa-activity-item{
+        display:flex; align-items:flex-start; gap:14px;
+        padding:12px 0; border-bottom:1px solid #f5f3ef;
+      }
+      .sa-activity-item:last-child{ border-bottom:none; }
+      .sa-activity-dot{
+        width:8px; height:8px; border-radius:50%;
+        flex-shrink:0; margin-top:5px;
+      }
+      .sa-activity-text{ font-size:12.5px; color:#1c1a17; line-height:1.5; }
+      .sa-activity-time{ font-size:11px; color:#9e9890; margin-top:2px; }
 
       .sa-loading{ text-align:center; padding:40px; color:#9e9890; font-size:13px; }
+      .sa-empty{ text-align:center; padding:30px; color:#c8c5c0; font-size:12px; }
 
-      .sa-modal-overlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:200; align-items:center; justify-content:center; }
-      .sa-modal-overlay.open{ display:flex; }
-      .sa-modal{ background:#fff; border-radius:12px; width:min(440px,92vw); box-shadow:0 24px 60px rgba(0,0,0,.15); overflow:hidden; }
-      .sa-modal-head{ padding:18px 22px; border-bottom:1px solid #e8e4dc; display:flex; align-items:center; justify-content:space-between; }
-      .sa-modal-title{ font-family:'Archivo',sans-serif; font-weight:900; font-size:16px; color:#1c1a17; }
-      .sa-modal-body{ padding:20px 22px; }
-      .sa-field{ margin-bottom:14px; }
-      .sa-label{ display:block; font-size:11.5px; font-weight:500; color:#6b6560; margin-bottom:6px; }
-      .sa-input{ width:100%; padding:10px 12px; border:1px solid #e8e4dc; border-radius:7px; font-size:13px; color:#1c1a17; font-family:'JetBrains Mono',monospace; outline:none; }
-      .sa-input:focus{ border-color:#c8c4bc; }
-      .sa-select{ width:100%; padding:10px 12px; border:1px solid #e8e4dc; border-radius:7px; font-size:13px; color:#1c1a17; font-family:'JetBrains Mono',monospace; outline:none; background:#fff; }
-      .sa-modal-foot{ padding:0 22px 20px; display:flex; gap:8px; justify-content:flex-end; }
-      .sa-error-inline{ font-size:11.5px; color:#c1502e; margin-top:12px; min-height:16px; }
+      @media(max-width:900px){
+        #sa-sidebar{ width:56px; min-width:56px; }
+        .sa-brand-text,.sa-nav-item span,.sa-sidebar-uname,.sa-sidebar-urole,.sa-nav-section{ display:none; }
+        .sa-nav-item{ justify-content:center; padding:10px; }
+        .sa-nav-item i{ width:auto; }
+        .sa-acceso-grid{ grid-template-columns:1fr; }
+        .sa-stats{ grid-template-columns:repeat(2,1fr); }
+      }
     `;
     document.head.appendChild(st);
   }
@@ -2461,41 +2651,79 @@ async function renderSuperadmin(){
 
   app.innerHTML = `
     <div id="sa-layout">
+
+      <!-- SIDEBAR -->
       <aside id="sa-sidebar">
-        <div class="sa-sb-brand">
-          <div class="sa-sb-logo">
-            <div class="sa-sb-box">SA</div>
-            <div>
-              <div class="sa-sb-name">${esc(RESTAURANT)}</div>
-              <div class="sa-sb-sub">Superadmin</div>
+        <div class="sa-brand">
+          <div class="sa-brand-logo">
+            <div class="sa-brand-mark">SA</div>
+            <div class="sa-brand-text">
+              <div class="sa-brand-name">${esc(RESTAURANT)}</div>
+              <div class="sa-brand-sub">Centro de control</div>
             </div>
           </div>
         </div>
-        <nav class="sa-sb-nav">
-          <div class="sa-sb-section">General</div>
-          <button class="sa-sb-item active" data-sapage="inicio"><i class="ti ti-layout-dashboard" aria-hidden="true"></i> Inicio</button>
-          <button class="sa-sb-item" data-sapage="usuarios"><i class="ti ti-users" aria-hidden="true"></i> Usuarios</button>
-          <button class="sa-sb-item" data-sapage="permisos"><i class="ti ti-shield-check" aria-hidden="true"></i> Roles y permisos</button>
-          <div class="sa-sb-section">Accesos</div>
-          <button class="sa-sb-item" data-sapage="accesos"><i class="ti ti-apps" aria-hidden="true"></i> Paneles</button>
+
+        <nav class="sa-nav">
+          <div class="sa-nav-section">General</div>
+          <button class="sa-nav-item active" data-sapage="inicio">
+            <i class="ti ti-layout-dashboard" aria-hidden="true"></i>
+            <span>Inicio</span>
+          </button>
+          <button class="sa-nav-item" data-sapage="usuarios">
+            <i class="ti ti-users" aria-hidden="true"></i>
+            <span>Usuarios</span>
+          </button>
+          <button class="sa-nav-item" data-sapage="permisos">
+            <i class="ti ti-shield-check" aria-hidden="true"></i>
+            <span>Roles y permisos</span>
+          </button>
+          <button class="sa-nav-item" data-sapage="actividad">
+            <i class="ti ti-activity" aria-hidden="true"></i>
+            <span>Actividad</span>
+          </button>
+
+          <div class="sa-nav-divider"></div>
+          <div class="sa-nav-section">Accesos</div>
+          <button class="sa-nav-item" data-sapage="accesos">
+            <i class="ti ti-apps" aria-hidden="true"></i>
+            <span>Paneles</span>
+          </button>
+          <button class="sa-nav-item" id="sa-quick-admin">
+            <i class="ti ti-layout-dashboard" aria-hidden="true" style="color:#c1502e;"></i>
+            <span>Administrador</span>
+          </button>
+          <button class="sa-nav-item" id="sa-quick-cocina">
+            <i class="ti ti-bowl" aria-hidden="true" style="color:#c49520;"></i>
+            <span>Cocina</span>
+          </button>
+          <button class="sa-nav-item" id="sa-quick-mesero">
+            <i class="ti ti-table" aria-hidden="true" style="color:#5c7a5a;"></i>
+            <span>Mesero</span>
+          </button>
         </nav>
-        <div class="sa-sb-footer">
-          <div class="sa-sb-user">
-            <div class="sa-sb-avatar">SA</div>
-            <div>
-              <div class="sa-sb-uname">Superadmin</div>
-              <div class="sa-sb-urole">Nivel máximo</div>
-            </div>
+
+        <div class="sa-sidebar-footer">
+          <div class="sa-sidebar-avatar">SA</div>
+          <div>
+            <div class="sa-sidebar-uname">Superadmin</div>
+            <div class="sa-sidebar-urole">Acceso total</div>
           </div>
         </div>
       </aside>
 
+      <!-- MAIN -->
       <div id="sa-main">
         <div id="sa-topbar">
-          <span class="sa-tb-title" id="sa-topbar-title">Centro de control</span>
-          <div class="sa-tb-right">
-            <button class="sa-btn primary" id="sa-nuevo-usuario-btn" style="display:none"><i class="ti ti-plus" aria-hidden="true"></i> Nuevo usuario</button>
-            <button class="sa-btn" id="sa-logout-btn"><i class="ti ti-logout" aria-hidden="true"></i> Salir</button>
+          <span class="sa-topbar-title" id="sa-topbar-title">Centro de control</span>
+          <div class="sa-topbar-right">
+            <span class="sa-topbar-date" id="sa-topbar-date"></span>
+            <button class="sa-tbtn primary" id="sa-nuevo-btn" style="display:none;">
+              <i class="ti ti-plus" aria-hidden="true"></i> Nuevo usuario
+            </button>
+            <button class="sa-tbtn" id="sa-logout-btn">
+              <i class="ti ti-logout" aria-hidden="true"></i> Salir
+            </button>
           </div>
         </div>
 
@@ -2503,32 +2731,101 @@ async function renderSuperadmin(){
 
           <!-- INICIO -->
           <div class="sa-page active" id="sapage-inicio">
-            <div class="sa-stats" id="sa-stats-row">
-              <div class="sa-stat"><div class="sa-stat-label">Usuarios totales</div><div class="sa-stat-val" id="sa-stat-users">—</div></div>
-              <div class="sa-stat"><div class="sa-stat-label">Mesas activas ahora</div><div class="sa-stat-val" id="sa-stat-mesas">—</div></div>
-              <div class="sa-stat"><div class="sa-stat-label">Pedidos hoy</div><div class="sa-stat-val" id="sa-stat-orders">—</div></div>
+            <div class="sa-ph">
+              <div>
+                <div class="sa-ph-title">Centro de control</div>
+                <div class="sa-ph-sub">Vista general del sistema</div>
+              </div>
             </div>
-            <div class="sa-section-card">
-              <div class="sa-sc-head"><div><div class="sa-sc-title">Acceso rápido a paneles</div><div class="sa-sc-sub">Abre cualquier panel sin cerrar sesión</div></div></div>
-              <div class="sa-sc-body">
+            <div class="sa-stats" id="sa-stats-grid">
+              <div class="sa-stat">
+                <div class="sa-stat-accent" style="background:#c1502e;"></div>
+                <div class="sa-stat-icon" style="background:#fdf1ed;color:#c1502e;">
+                  <i class="ti ti-users" aria-hidden="true"></i>
+                </div>
+                <div class="sa-stat-label">Usuarios totales</div>
+                <div class="sa-stat-val" id="sa-s-users">—</div>
+              </div>
+              <div class="sa-stat">
+                <div class="sa-stat-accent" style="background:#5c7a5a;"></div>
+                <div class="sa-stat-icon" style="background:#edf4ec;color:#4a6e48;">
+                  <i class="ti ti-table" aria-hidden="true"></i>
+                </div>
+                <div class="sa-stat-label">Mesas activas</div>
+                <div class="sa-stat-val" id="sa-s-mesas">—</div>
+              </div>
+              <div class="sa-stat">
+                <div class="sa-stat-accent" style="background:#c49520;"></div>
+                <div class="sa-stat-icon" style="background:#fdf8ec;color:#c49520;">
+                  <i class="ti ti-receipt" aria-hidden="true"></i>
+                </div>
+                <div class="sa-stat-label">Pedidos hoy</div>
+                <div class="sa-stat-val" id="sa-s-orders">—</div>
+              </div>
+              <div class="sa-stat">
+                <div class="sa-stat-accent" style="background:#55504a;"></div>
+                <div class="sa-stat-icon" style="background:#f2f0ec;color:#6b6560;">
+                  <i class="ti ti-cash" aria-hidden="true"></i>
+                </div>
+                <div class="sa-stat-label">Ventas hoy</div>
+                <div class="sa-stat-val" id="sa-s-ventas">—</div>
+              </div>
+              <div class="sa-stat">
+                <div class="sa-stat-accent" style="background:#1c1a17;"></div>
+                <div class="sa-stat-icon" style="background:#f2f0ec;color:#1c1a17;">
+                  <i class="ti ti-shield-check" aria-hidden="true"></i>
+                </div>
+                <div class="sa-stat-label">Admins</div>
+                <div class="sa-stat-val" id="sa-s-admins">—</div>
+              </div>
+              <div class="sa-stat">
+                <div class="sa-stat-accent" style="background:#5c7a5a;"></div>
+                <div class="sa-stat-icon" style="background:#edf4ec;color:#4a6e48;">
+                  <i class="ti ti-bowl" aria-hidden="true"></i>
+                </div>
+                <div class="sa-stat-label">Cocina / Meseros</div>
+                <div class="sa-stat-val" id="sa-s-staff">—</div>
+              </div>
+            </div>
+
+            <div class="sa-card">
+              <div class="sa-card-head">
+                <div>
+                  <div class="sa-card-title">Acceso rápido a paneles</div>
+                  <div class="sa-card-sub">Abre cualquier panel sin cerrar sesión</div>
+                </div>
+              </div>
+              <div class="sa-card-body">
                 <div class="sa-acceso-grid">
                   <div class="sa-acceso-card">
-                    <div class="sa-acceso-icon" style="background:#fdf1ed;color:#c1502e;"><i class="ti ti-layout-dashboard" aria-hidden="true"></i></div>
-                    <div class="sa-acceso-card-title">Administrador</div>
-                    <div class="sa-acceso-card-sub">Gestión general, menú, estadísticas y QR.</div>
-                    <button class="sa-btn" id="sa-goto-admin">Abrir panel</button>
+                    <div class="sa-acceso-icon" style="background:#fdf1ed;color:#c1502e;">
+                      <i class="ti ti-layout-dashboard" aria-hidden="true"></i>
+                    </div>
+                    <div class="sa-acceso-title">Administrador</div>
+                    <div class="sa-acceso-desc">Gestión general del restaurante, menú, estadísticas y QR.</div>
+                    <button class="sa-acceso-btn sa-btn-rust" id="sa-go-admin">
+                      <i class="ti ti-arrow-right" aria-hidden="true"></i> Abrir panel
+                    </button>
                   </div>
                   <div class="sa-acceso-card">
-                    <div class="sa-acceso-icon" style="background:#fdf8ec;color:#c49520;"><i class="ti ti-bowl" aria-hidden="true"></i></div>
-                    <div class="sa-acceso-card-title">Cocina</div>
-                    <div class="sa-acceso-card-sub">Panel KDS para gestión de pedidos en tiempo real.</div>
-                    <button class="sa-btn" id="sa-goto-cocina">Abrir panel</button>
+                    <div class="sa-acceso-icon" style="background:#fdf8ec;color:#c49520;">
+                      <i class="ti ti-bowl" aria-hidden="true"></i>
+                    </div>
+                    <div class="sa-acceso-title">Cocina</div>
+                    <div class="sa-acceso-desc">Panel KDS para gestión de pedidos en tiempo real.</div>
+                    <button class="sa-acceso-btn sa-btn-mustard" id="sa-go-cocina">
+                      <i class="ti ti-arrow-right" aria-hidden="true"></i> Abrir panel
+                    </button>
                   </div>
                   <div class="sa-acceso-card">
-                    <div class="sa-acceso-icon" style="background:#edf4ec;color:#4a6e48;"><i class="ti ti-table" aria-hidden="true"></i></div>
-                    <div class="sa-acceso-card-title">Mesero</div>
-                    <div class="sa-acceso-card-sub">Mapa de mesas, sesiones y atención al cliente.</div>
-                    <button class="sa-btn" id="sa-goto-mesero">Abrir panel</button>
+                    <div class="sa-acceso-icon" style="background:#edf4ec;color:#4a6e48;">
+                      <i class="ti ti-table" aria-hidden="true"></i>
+                    </div>
+                    <div class="sa-acceso-title">Mesero</div>
+                    <div class="sa-acceso-desc">Mapa de mesas, sesiones y atención al cliente.</div>
+                    <button class="sa-acceso-btn sa-btn-sage" id="sa-go-mesero">
+                      <i class="ti ti-arrow-right" aria-hidden="true"></i> Abrir panel
+                    </button>
                   </div>
                 </div>
               </div>
@@ -2538,11 +2835,14 @@ async function renderSuperadmin(){
           <!-- USUARIOS -->
           <div class="sa-page" id="sapage-usuarios">
             <div class="sa-ph">
-              <div><div class="sa-ph-title">Usuarios</div><div class="sa-ph-sub">Gestión de accesos y roles</div></div>
+              <div>
+                <div class="sa-ph-title">Usuarios</div>
+                <div class="sa-ph-sub">Gestión de accesos y roles del sistema</div>
+              </div>
             </div>
-            <div class="sa-section-card">
-              <div class="sa-sc-body" style="padding-top:10px;">
-                <div id="sa-users-list"><div class="sa-loading">Cargando…</div></div>
+            <div class="sa-card">
+              <div class="sa-card-body" style="padding-top:12px;">
+                <div id="sa-users-content"><div class="sa-loading">Cargando usuarios…</div></div>
               </div>
             </div>
           </div>
@@ -2550,14 +2850,17 @@ async function renderSuperadmin(){
           <!-- PERMISOS -->
           <div class="sa-page" id="sapage-permisos">
             <div class="sa-ph">
-              <div><div class="sa-ph-title">Roles y permisos</div><div class="sa-ph-sub">Qué puede hacer cada rol</div></div>
+              <div>
+                <div class="sa-ph-title">Roles y permisos</div>
+                <div class="sa-ph-sub">Qué puede hacer cada rol en el sistema</div>
+              </div>
             </div>
-            <div class="sa-section-card">
-              <div class="sa-sc-body">
-                <table class="sa-permisos-table">
+            <div class="sa-card">
+              <div class="sa-card-body">
+                <table class="sa-perms-table">
                   <thead>
                     <tr>
-                      <th style="width:40%">Permiso</th>
+                      <th style="width:38%;">Permiso</th>
                       <th>Superadmin</th>
                       <th>Admin</th>
                       <th>Mesero</th>
@@ -2566,19 +2869,24 @@ async function renderSuperadmin(){
                   </thead>
                   <tbody>
                     ${[
-                      ['Ver pedidos',         true,  true,  true,  true ],
-                      ['Cambiar estado pedido',true,  true,  false, true ],
-                      ['Gestionar mesas',     true,  true,  true,  false],
-                      ['Panel cocina',        true,  true,  false, true ],
-                      ['Modificar menú',      true,  true,  false, false],
-                      ['Ver estadísticas',    true,  true,  false, false],
-                      ['Ver códigos QR',      true,  true,  false, false],
-                      ['Gestionar usuarios',  true,  false, false, false],
-                      ['Configuración',       true,  false, false, false],
+                      ['Ver pedidos',            true,  true,  true,  true ],
+                      ['Cambiar estado pedido',  true,  true,  false, true ],
+                      ['Gestionar mesas',        true,  true,  true,  false],
+                      ['Abrir / cerrar mesas',   true,  true,  true,  false],
+                      ['Panel de cocina',        true,  true,  false, true ],
+                      ['Modificar menú',         true,  true,  false, false],
+                      ['Ver estadísticas',       true,  true,  false, false],
+                      ['Ver códigos QR',         true,  true,  false, false],
+                      ['Gestionar usuarios',     true,  false, false, false],
+                      ['Acceso a todos los paneles', true, false, false, false],
+                      ['Configuración del sistema', true, false, false, false],
                     ].map(([label,...vals]) => `
                       <tr>
                         <td>${label}</td>
-                        ${vals.map(v => `<td>${v ? '<span class="sa-check">✓</span>' : '<span class="sa-dash">—</span>'}</td>`).join('')}
+                        ${vals.map(v => `<td>${v
+                          ? '<span class="sa-check">✓</span>'
+                          : '<span class="sa-dash">—</span>'
+                        }</td>`).join('')}
                       </tr>`).join('')}
                   </tbody>
                 </table>
@@ -2586,29 +2894,59 @@ async function renderSuperadmin(){
             </div>
           </div>
 
-          <!-- ACCESOS -->
+          <!-- ACTIVIDAD -->
+          <div class="sa-page" id="sapage-actividad">
+            <div class="sa-ph">
+              <div>
+                <div class="sa-ph-title">Actividad reciente</div>
+                <div class="sa-ph-sub">Últimos pedidos y sesiones del sistema</div>
+              </div>
+            </div>
+            <div class="sa-card">
+              <div class="sa-card-body">
+                <div id="sa-actividad-content"><div class="sa-loading">Cargando actividad…</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANELES -->
           <div class="sa-page" id="sapage-accesos">
             <div class="sa-ph">
-              <div><div class="sa-ph-title">Paneles</div><div class="sa-ph-sub">Acceso directo a cada panel del sistema</div></div>
+              <div>
+                <div class="sa-ph-title">Paneles del sistema</div>
+                <div class="sa-ph-sub">Acceso directo a cada módulo operativo</div>
+              </div>
             </div>
             <div class="sa-acceso-grid">
               <div class="sa-acceso-card">
-                <div class="sa-acceso-icon" style="background:#fdf1ed;color:#c1502e;"><i class="ti ti-layout-dashboard" aria-hidden="true"></i></div>
-                <div class="sa-acceso-card-title">Administrador</div>
-                <div class="sa-acceso-card-sub">Menú, estadísticas, QR y pedidos desde vista admin.</div>
-                <button class="sa-btn" id="sa-goto-admin2">Abrir panel</button>
+                <div class="sa-acceso-icon" style="background:#fdf1ed;color:#c1502e;">
+                  <i class="ti ti-layout-dashboard" aria-hidden="true"></i>
+                </div>
+                <div class="sa-acceso-title">Administrador</div>
+                <div class="sa-acceso-desc">Menú, estadísticas, pedidos y códigos QR del restaurante.</div>
+                <button class="sa-acceso-btn sa-btn-rust" id="sa-go-admin2">
+                  <i class="ti ti-arrow-right" aria-hidden="true"></i> Abrir panel
+                </button>
               </div>
               <div class="sa-acceso-card">
-                <div class="sa-acceso-icon" style="background:#fdf8ec;color:#c49520;"><i class="ti ti-bowl" aria-hidden="true"></i></div>
-                <div class="sa-acceso-card-title">Cocina — KDS</div>
-                <div class="sa-acceso-card-sub">Kitchen Display System para cocina en tiempo real.</div>
-                <button class="sa-btn" id="sa-goto-cocina2">Abrir panel</button>
+                <div class="sa-acceso-icon" style="background:#fdf8ec;color:#c49520;">
+                  <i class="ti ti-bowl" aria-hidden="true"></i>
+                </div>
+                <div class="sa-acceso-title">Cocina — KDS</div>
+                <div class="sa-acceso-desc">Kitchen Display System para seguimiento de pedidos en tiempo real.</div>
+                <button class="sa-acceso-btn sa-btn-mustard" id="sa-go-cocina2">
+                  <i class="ti ti-arrow-right" aria-hidden="true"></i> Abrir panel
+                </button>
               </div>
               <div class="sa-acceso-card">
-                <div class="sa-acceso-icon" style="background:#edf4ec;color:#4a6e48;"><i class="ti ti-table" aria-hidden="true"></i></div>
-                <div class="sa-acceso-card-title">Mesero</div>
-                <div class="sa-acceso-card-sub">Mapa de mesas y gestión de sesiones.</div>
-                <button class="sa-btn" id="sa-goto-mesero2">Abrir panel</button>
+                <div class="sa-acceso-icon" style="background:#edf4ec;color:#4a6e48;">
+                  <i class="ti ti-table" aria-hidden="true"></i>
+                </div>
+                <div class="sa-acceso-title">Mesero</div>
+                <div class="sa-acceso-desc">Mapa de mesas, sesiones activas y gestión de atención.</div>
+                <button class="sa-acceso-btn sa-btn-sage" id="sa-go-mesero2">
+                  <i class="ti ti-arrow-right" aria-hidden="true"></i> Abrir panel
+                </button>
               </div>
             </div>
           </div>
@@ -2618,110 +2956,161 @@ async function renderSuperadmin(){
     </div>
 
     <!-- MODAL NUEVO USUARIO -->
-    <div class="sa-modal-overlay" id="sa-modal-overlay">
+    <div class="sa-overlay" id="sa-modal-overlay">
       <div class="sa-modal">
         <div class="sa-modal-head">
           <span class="sa-modal-title">Nuevo usuario</span>
-          <button class="sa-btn" id="sa-modal-close" style="padding:4px 8px;"><i class="ti ti-x" aria-hidden="true"></i></button>
+          <button class="sa-modal-close" id="sa-modal-x">✕</button>
         </div>
         <div class="sa-modal-body">
-          <div class="sa-field"><label class="sa-label">Nombre</label><input class="sa-input" id="sa-new-name" placeholder="Nombre completo"></div>
-          <div class="sa-field"><label class="sa-label">Correo</label><input class="sa-input" id="sa-new-email" type="email" placeholder="correo@ejemplo.com"></div>
-          <div class="sa-field"><label class="sa-label">Contraseña</label><input class="sa-input" id="sa-new-pass" type="password" placeholder="Mínimo 8 caracteres"></div>
+          <div class="sa-field">
+            <label class="sa-label">Nombre completo</label>
+            <input class="sa-input" id="sa-f-name" type="text" placeholder="Juan García">
+          </div>
+          <div class="sa-field">
+            <label class="sa-label">Correo electrónico</label>
+            <input class="sa-input" id="sa-f-email" type="email" placeholder="correo@ejemplo.com">
+          </div>
+          <div class="sa-field">
+            <label class="sa-label">Contraseña</label>
+            <div class="sa-input-wrap">
+              <input class="sa-input" id="sa-f-pass" type="password" placeholder="Mínimo 8 caracteres" style="padding-right:38px;">
+              <button class="sa-eye" id="sa-f-eye" type="button" tabindex="-1">
+                <i class="ti ti-eye" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
           <div class="sa-field">
             <label class="sa-label">Rol</label>
-            <select class="sa-select" id="sa-new-role">
+            <select class="sa-select" id="sa-f-role">
               <option value="mozo">Mesero</option>
               <option value="cocina">Cocina</option>
               <option value="admin">Administrador</option>
               <option value="superadmin">Superadmin</option>
             </select>
           </div>
-          <div class="sa-error-inline" id="sa-modal-error"></div>
+          <div class="sa-modal-error" id="sa-modal-err"></div>
         </div>
         <div class="sa-modal-foot">
-          <button class="sa-btn" id="sa-modal-cancel">Cancelar</button>
-          <button class="sa-btn primary" id="sa-modal-submit">Crear usuario</button>
+          <button class="sa-tbtn" id="sa-modal-cancel">Cancelar</button>
+          <button class="sa-tbtn primary" id="sa-modal-submit">Crear usuario</button>
         </div>
       </div>
     </div>
   `;
 
-  /* Logout */
+  /* ── Fecha topbar ── */
+  document.getElementById('sa-topbar-date').textContent =
+    new Date().toLocaleDateString('es-PE',{weekday:'short',day:'numeric',month:'short'});
+
+  /* ── Logout ── */
   document.getElementById('sa-logout-btn').onclick = async () => {
     app.style.padding = '';
     app.style.maxWidth = '';
     await supabase.auth.signOut();
-    renderAdministradorLogin();
+    renderLoginUnificado();
   };
 
-  /* Navegación */
-  const saTitulos = { inicio:'Centro de control', usuarios:'Usuarios', permisos:'Roles y permisos', accesos:'Paneles' };
-  document.querySelectorAll('.sa-sb-item[data-sapage]').forEach(btn => {
+  /* ── Accesos rápidos ── */
+  const goAdmin  = () => { app.style.padding=''; app.style.maxWidth=''; renderAdministrador(); };
+  const goCocina = () => { app.style.padding=''; app.style.maxWidth=''; renderStaff(); };
+  const goMesero = () => { app.style.padding=''; app.style.maxWidth=''; renderMesero(); };
+
+  ['sa-go-admin','sa-go-admin2','sa-quick-admin'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.onclick = goAdmin;
+  });
+  ['sa-go-cocina','sa-go-cocina2','sa-quick-cocina'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.onclick = goCocina;
+  });
+  ['sa-go-mesero','sa-go-mesero2','sa-quick-mesero'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.onclick = goMesero;
+  });
+
+  /* ── Navegación sidebar ── */
+  const saTitulos = {
+    inicio:    'Centro de control',
+    usuarios:  'Usuarios',
+    permisos:  'Roles y permisos',
+    actividad: 'Actividad reciente',
+    accesos:   'Paneles del sistema',
+  };
+
+  document.querySelectorAll('.sa-nav-item[data-sapage]').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.sapage;
-      document.querySelectorAll('.sa-sb-item').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.sa-nav-item').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       document.querySelectorAll('.sa-page').forEach(p => p.classList.remove('active'));
       document.getElementById('sapage-' + key).classList.add('active');
-      document.getElementById('sa-topbar-title').textContent = saTitulos[key];
-      document.getElementById('sa-nuevo-usuario-btn').style.display = key === 'usuarios' ? 'flex' : 'none';
-      if(key === 'inicio') cargarInicio();
-      if(key === 'usuarios') cargarUsuarios();
+      document.getElementById('sa-topbar-title').textContent = saTitulos[key] || key;
+      document.getElementById('sa-nuevo-btn').style.display = key === 'usuarios' ? 'flex' : 'none';
+      if(key === 'inicio')    cargarInicio();
+      if(key === 'usuarios')  cargarUsuarios();
+      if(key === 'actividad') cargarActividad();
     });
   });
 
-  /* Accesos rápidos */
-  function bindAcceso(id, fn){ const el = document.getElementById(id); if(el) el.onclick = fn; }
-  bindAcceso('sa-goto-admin',   () => renderAdministrador());
-  bindAcceso('sa-goto-cocina',  () => renderStaff());
-  bindAcceso('sa-goto-mesero',  () => renderMesero());
-  bindAcceso('sa-goto-admin2',  () => renderAdministrador());
-  bindAcceso('sa-goto-cocina2', () => renderStaff());
-  bindAcceso('sa-goto-mesero2', () => renderMesero());
-
-  /* Modal nuevo usuario */
+  /* ── Modal nuevo usuario ── */
   const overlay = document.getElementById('sa-modal-overlay');
-  document.getElementById('sa-nuevo-usuario-btn').onclick = () => overlay.classList.add('open');
-  document.getElementById('sa-modal-close').onclick    = () => overlay.classList.remove('open');
-  document.getElementById('sa-modal-cancel').onclick   = () => overlay.classList.remove('open');
+  document.getElementById('sa-nuevo-btn').onclick    = () => { limpiarModal(); overlay.classList.add('open'); };
+  document.getElementById('sa-modal-x').onclick      = () => overlay.classList.remove('open');
+  document.getElementById('sa-modal-cancel').onclick = () => overlay.classList.remove('open');
+  overlay.addEventListener('click', e => { if(e.target === overlay) overlay.classList.remove('open'); });
+
+  /* Mostrar/ocultar contraseña */
+  document.getElementById('sa-f-eye').onclick = () => {
+    const inp  = document.getElementById('sa-f-pass');
+    const icon = document.querySelector('#sa-f-eye i');
+    const showing = inp.type === 'text';
+    inp.type = showing ? 'password' : 'text';
+    icon.className = showing ? 'ti ti-eye' : 'ti ti-eye-off';
+  };
+
+  function limpiarModal(){
+    ['sa-f-name','sa-f-email','sa-f-pass'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el){ el.value=''; el.classList.remove('error'); }
+    });
+    document.getElementById('sa-modal-err').textContent = '';
+    const btn = document.getElementById('sa-modal-submit');
+    btn.disabled = false; btn.textContent = 'Crear usuario';
+  }
 
   document.getElementById('sa-modal-submit').onclick = async () => {
-    const name  = document.getElementById('sa-new-name').value.trim();
-    const email = document.getElementById('sa-new-email').value.trim();
-    const pass  = document.getElementById('sa-new-pass').value;
-    const role  = document.getElementById('sa-new-role').value;
-    const errEl = document.getElementById('sa-modal-error');
+    const name  = document.getElementById('sa-f-name').value.trim();
+    const email = document.getElementById('sa-f-email').value.trim();
+    const pass  = document.getElementById('sa-f-pass').value;
+    const role  = document.getElementById('sa-f-role').value;
+    const errEl = document.getElementById('sa-modal-err');
     const btn   = document.getElementById('sa-modal-submit');
 
     errEl.textContent = '';
-    if(!name){ errEl.textContent = 'Ingresa el nombre.'; return; }
-    if(!email){ errEl.textContent = 'Ingresa el correo.'; return; }
-    if(pass.length < 8){ errEl.textContent = 'La contraseña debe tener al menos 8 caracteres.'; return; }
+    document.querySelectorAll('.sa-input').forEach(el => el.classList.remove('error'));
 
-    btn.disabled = true;
-    btn.textContent = 'Creando…';
+    let valid = true;
+    if(!name){ document.getElementById('sa-f-name').classList.add('error'); valid = false; }
+    if(!email || !email.includes('@')){ document.getElementById('sa-f-email').classList.add('error'); valid = false; }
+    if(pass.length < 8){ document.getElementById('sa-f-pass').classList.add('error'); valid = false; }
+    if(!valid){ errEl.textContent = 'Completa todos los campos correctamente.'; return; }
 
-    /* Nota: crear usuarios requiere service_role en Supabase.
-       Con la clave pública solo se puede hacer signUp normal.
-       Aquí se usa signUp — el usuario queda pendiente de confirmación. */
+    btn.disabled = true; btn.textContent = 'Creando…';
+
     const { data, error } = await supabase.auth.signUp({ email, password: pass });
     if(error){
       errEl.textContent = error.message || 'No se pudo crear el usuario.';
-      btn.disabled = false;
-      btn.textContent = 'Crear usuario';
+      btn.disabled = false; btn.textContent = 'Crear usuario';
       return;
     }
 
-    /* Si se creó, insertar perfil con rol */
     if(data.user){
       await supabase.from('profiles').upsert({ id: data.user.id, role });
     }
 
     overlay.classList.remove('open');
-    btn.disabled = false;
-    btn.textContent = 'Crear usuario';
+    limpiarModal();
     await cargarUsuarios();
+    /* Cambiar a pestaña usuarios si no está activa */
+    document.querySelector('.sa-nav-item[data-sapage="usuarios"]')?.click();
   };
 
   /* ── Cargar inicio ── */
@@ -2729,85 +3118,31 @@ async function renderSuperadmin(){
     const inicioDia = new Date(
       new Date().toLocaleDateString('en-CA',{timeZone:'America/Lima'}) + 'T00:00:00-05:00'
     );
-    const [{ data: profiles }, { data: sesiones }, { data: orders }] = await Promise.all([
+
+    const [
+      { data: profiles },
+      { data: sesiones },
+      { data: orders }
+    ] = await Promise.all([
       supabase.from('profiles').select('id,role'),
       supabase.rpc('get_table_sessions'),
-      supabase.from('orders').select('id').gte('created_at', inicioDia.toISOString())
+      supabase.from('orders').select('id,total,status').gte('created_at', inicioDia.toISOString())
     ]);
 
-    const sess = sesiones || [];
-    const mesasActivas = MESAS.filter(m => sess.find(s => Number(s.table_id) === m.id && s.status === 'active')).length;
+    const profs = profiles || [];
+    const sess  = sesiones || [];
+    const ords  = orders   || [];
 
-    document.getElementById('sa-stat-users').textContent  = (profiles||[]).length;
-    document.getElementById('sa-stat-mesas').textContent  = `${mesasActivas} / ${MESAS.length}`;
-    document.getElementById('sa-stat-orders').textContent = (orders||[]).length;
-  }
+    const mesasActivas = MESAS.filter(m =>
+      sess.find(s => Number(s.table_id) === m.id && s.status === 'active')
+    ).length;
 
-  /* ── Cargar usuarios ── */
-  async function cargarUsuarios(){
-    const el = document.getElementById('sa-users-list');
-    el.innerHTML = '<div class="sa-loading">Cargando…</div>';
+    const ventas = ords.reduce((s,o) => s + Number(o.total||0), 0);
+    const admins = profs.filter(p => p.role === 'admin' || p.role === 'superadmin').length;
+    const staff  = profs.filter(p => p.role === 'cocina' || p.role === 'mozo').length;
 
-    const { data: profiles, error } = await supabase
-      .from('profiles')
-      .select('id, role')
-      .order('role');
-
-    if(error || !profiles){ el.innerHTML = '<div class="sa-loading">No se pudieron cargar los usuarios.</div>'; return; }
-
-    if(profiles.length === 0){ el.innerHTML = '<div class="sa-loading">Sin usuarios registrados.</div>'; return; }
-
-    const rolLabel = { superadmin:'Superadmin', admin:'Admin', mozo:'Mesero', cocina:'Cocina' };
-    const rolCls   = { superadmin:'sa-role-superadmin', admin:'sa-role-admin', mozo:'sa-role-mozo', cocina:'sa-role-cocina' };
-
-    el.innerHTML = `
-      <table class="sa-table" style="width:100%;">
-        <thead>
-          <tr>
-            <th>ID de usuario</th>
-            <th>Rol</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${profiles.map(p => `
-            <tr>
-              <td>
-                <div class="sa-user-name" style="font-family:monospace;font-size:11px;">${esc(p.id.slice(0,16))}…</div>
-              </td>
-              <td><span class="sa-role-badge ${rolCls[p.role]||'sa-role-admin'}">${esc(rolLabel[p.role]||p.role)}</span></td>
-              <td>
-                <div class="sa-actions">
-                  <select class="sa-select" style="width:auto;padding:4px 8px;font-size:11px;" data-uid="${esc(p.id)}">
-                    <option value="mozo"      ${p.role==='mozo'?'selected':''}>Mesero</option>
-                    <option value="cocina"    ${p.role==='cocina'?'selected':''}>Cocina</option>
-                    <option value="admin"     ${p.role==='admin'?'selected':''}>Admin</option>
-                    <option value="superadmin"${p.role==='superadmin'?'selected':''}>Superadmin</option>
-                  </select>
-                  <button class="sa-action-btn" data-uid="${esc(p.id)}" data-action="save">Guardar</button>
-                </div>
-              </td>
-            </tr>`).join('')}
-        </tbody>
-      </table>`;
-
-    el.querySelectorAll('[data-action="save"]').forEach(btn => {
-      btn.onclick = async () => {
-        const uid = btn.dataset.uid;
-        const sel = el.querySelector(`select[data-uid="${uid}"]`);
-        btn.disabled = true;
-        btn.textContent = '…';
-        await supabase.from('profiles').update({ role: sel.value }).eq('id', uid);
-        btn.disabled = false;
-        btn.textContent = 'Guardar';
-        await cargarUsuarios();
-      };
-    });
-  }
-
-  /* Carga inicial */
-  await cargarInicio();
-}
+    const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+    set('sa-s-users',  profs.length);
   /* ============================================================
      ROUTER
   ============================================================ */
