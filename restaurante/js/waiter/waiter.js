@@ -1,13 +1,19 @@
 /* ============================================================
    WAITER — Panel de Mesero
-   Movido tal cual desde el IIFE original: renderMesero().
-   renderMeseroLogin() se conserva en auth/login.js (no se
-   duplica, regla 6) y se importa aquí.
+   Cambios respecto al original:
+   - Eliminada dependencia de MESAS (constants.js)
+   - Eliminada constante POSICIONES hardcodeada
+   - getTables() carga las mesas desde public.tables
+   - calcularPosiciones() genera grid dinámico para cualquier N
+   - mesasActuales almacena la lista en memoria durante el render
+   - accionCerrar() ya no busca mesa en MESAS[], usa mesasActuales
+   - renderPanel() ya no busca mesa en MESAS[], usa mesasActuales
+   - El resto del comportamiento es idéntico al original
    ============================================================ */
 
-import { supabase } from '../config/supabase.js';
-import { RESTAURANT, MESAS } from '../config/constants.js';
-import { esc } from '../customer/customer.js';
+import { supabase }   from '../config/supabase.js';
+import { RESTAURANT } from '../config/constants.js';
+import { esc, getTables } from '../customer/customer.js';
 import { renderMeseroLogin } from '../auth/login.js';
 
 /* ============================================================
@@ -266,23 +272,39 @@ export async function renderMesero(){
     document.head.appendChild(lk);
   }
 
-  app.style.padding = '0';
+  app.style.padding  = '0';
   app.style.maxWidth = 'none';
 
-  /* Posiciones físicas de las mesas en % del canvas */
-  const POSICIONES = {
-    1: { x:22, y:30 },
-    2: { x:52, y:30 },
-    3: { x:22, y:72 },
-    4: { x:52, y:72 },
-  };
+  /* ============================================================
+     POSICIONES DINÁMICAS
+     Grid de 2 columnas en el área izquierda del canvas (0–62%).
+     Cada nueva mesa ocupa la siguiente celda del grid.
+     Funciona para cualquier número de mesas sin hardcodear.
+  ============================================================ */
+  function calcularPosiciones(mesas){
+    const cols   = 2;
+    const startX = 14;   // % desde la izquierda
+    const startY = 18;   // % desde arriba
+    const stepX  = 26;   // % entre columnas
+    const stepY  = 22;   // % entre filas
 
-  /* Zonas decorativas del restaurante */
+    return mesas.reduce((pos, mesa, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      pos[mesa.id] = {
+        x: startX + col * stepX,
+        y: startY + row * stepY
+      };
+      return pos;
+    }, {});
+  }
+
+  /* Zonas decorativas del restaurante — estáticas */
   const ZONAS = [
-    { label:'Barra',  left:'70%', top:'12%',  width:'22%', height:'16%' },
-    { label:'Caja',   left:'70%', top:'38%',  width:'22%', height:'14%' },
-    { label:'Cocina', left:'70%', top:'62%',  width:'22%', height:'22%' },
-    { label:'Entrada',left:'2%',  top:'88%',  width:'18%', height:'10%' },
+    { label:'Barra',   left:'70%', top:'12%', width:'22%', height:'16%' },
+    { label:'Caja',    left:'70%', top:'38%', width:'22%', height:'14%' },
+    { label:'Cocina',  left:'70%', top:'62%', width:'22%', height:'22%' },
+    { label:'Entrada', left:'2%',  top:'88%', width:'18%', height:'10%' },
   ];
 
   app.innerHTML = `
@@ -343,7 +365,7 @@ export async function renderMesero(){
               <button class="mv-panel-x" id="mv-panel-close">✕</button>
             </div>
             <div class="mv-panel-stats" id="mv-panel-stats"></div>
-            <div class="mv-panel-body" id="mv-panel-body"></div>
+            <div class="mv-panel-body"  id="mv-panel-body"></div>
             <div class="mv-panel-footer" id="mv-panel-footer"></div>
           </div>
         </div>
@@ -362,13 +384,13 @@ export async function renderMesero(){
   /* ── Logout ── */
   document.getElementById('mv-logout').onclick = async () => {
     clearInterval(clockInt);
-    app.style.padding = '';
+    app.style.padding  = '';
     app.style.maxWidth = '';
     await supabase.auth.signOut();
     renderMeseroLogin();
   };
 
-  document.getElementById('mv-refresh').onclick = () => cargarDatos();
+  document.getElementById('mv-refresh').onclick  = () => cargarDatos();
   document.getElementById('mv-panel-close').onclick = () => cerrarPanel();
 
   /* ── Tabs vista ── */
@@ -390,18 +412,37 @@ export async function renderMesero(){
     });
   });
 
-  let datosActuales = { sesiones:[], pedidos:[] };
+  /* ============================================================
+     ESTADO LOCAL
+     mesasActuales reemplaza MESAS — se recarga en cada
+     cargarDatos() para reflejar altas/bajas sin recargar la página.
+  ============================================================ */
+  let mesasActuales    = [];   // { id, nombre, active }
+  let posicionesActuales = {}; // { [id]: { x, y } }
+  let datosActuales    = { sesiones:[], pedidos:[] };
   let mesaSeleccionada = null;
 
   /* ── Cargar datos ── */
   async function cargarDatos(){
-    const [{ data: sesiones }, { data: pedidos }] = await Promise.all([
+    const [
+      mesas,
+      { data: sesiones },
+      { data: pedidos }
+    ] = await Promise.all([
+      getTables(),
       supabase.rpc('get_table_sessions'),
-      supabase.from('orders')
+      supabase
+        .from('orders')
         .select('id,table_id,status,items,total,created_at,session_id,notes')
-        .in('status',['pendiente','preparando','listo'])
+        .in('status', ['pendiente','preparando','listo'])
     ]);
-    datosActuales = { sesiones: sesiones||[], pedidos: pedidos||[] };
+
+    /* Solo mesas activas en el panel del mesero.
+       Las inactivas no tienen sesión ni QR funcional. */
+    mesasActuales     = mesas.filter(m => m.active);
+    posicionesActuales = calcularPosiciones(mesasActuales);
+    datosActuales      = { sesiones: sesiones||[], pedidos: pedidos||[] };
+
     dibujarMapa();
     dibujarGrid();
     if(mesaSeleccionada !== null) renderPanel(mesaSeleccionada);
@@ -410,11 +451,17 @@ export async function renderMesero(){
   /* ── Helpers de estado ── */
   function estadoMesa(mesa){
     const { sesiones, pedidos } = datosActuales;
-    const sesion = sesiones.find(s => Number(s.table_id) === mesa.id && s.status === 'active');
+    const sesion = sesiones.find(
+      s => Number(s.table_id) === mesa.id && s.status === 'active'
+    );
     const pedidosMesa = sesion
-      ? pedidos.filter(o => Number(o.table_id) === mesa.id && o.session_id === sesion.id)
+      ? pedidos.filter(
+          o => Number(o.table_id) === mesa.id && o.session_id === sesion.id
+        )
       : [];
-    const pendientes = pedidosMesa.filter(o => o.status === 'pendiente' || o.status === 'preparando').length;
+    const pendientes = pedidosMesa.filter(
+      o => o.status === 'pendiente' || o.status === 'preparando'
+    ).length;
     const total = pedidosMesa.reduce((s,o) => s + Number(o.total||0), 0);
     const mins  = sesion
       ? Math.max(0, Math.floor((Date.now() - new Date(sesion.started_at).getTime()) / 60000))
@@ -422,7 +469,7 @@ export async function renderMesero(){
 
     let estado = 'libre';
     if(sesion && pendientes > 0) estado = 'pendiente';
-    else if(sesion) estado = 'activa';
+    else if(sesion)              estado = 'activa';
 
     return { sesion, pedidosMesa, pendientes, total, mins, estado };
   }
@@ -432,20 +479,22 @@ export async function renderMesero(){
     const nodesEl = document.getElementById('mv-mesas-nodes');
     if(!nodesEl) return;
 
-    nodesEl.innerHTML = MESAS.map(mesa => {
-      const pos = POSICIONES[mesa.id] || { x:50, y:50 };
-      const { estado, pedidosMesa, pendientes } = estadoMesa(mesa);
+    nodesEl.innerHTML = mesasActuales.map(mesa => {
+      const pos        = posicionesActuales[mesa.id] || { x:50, y:50 };
+      const { estado, pendientes } = estadoMesa(mesa);
       const isSelected = mesaSeleccionada === mesa.id;
 
-      const subTxt = estado === 'libre' ? 'Libre'
-        : estado === 'pendiente' ? 'Pendiente'
-        : 'Activa';
+      const subTxt = estado === 'libre'    ? 'Libre'
+                   : estado === 'pendiente'? 'Pendiente'
+                   : 'Activa';
 
       return `
         <div class="mv-mesa-node" data-mesa-id="${mesa.id}"
           style="left:${pos.x}%;top:${pos.y}%;">
           <div class="mv-mesa-circle ${estado}${isSelected?' selected':''}">
-            ${pendientes > 0 ? `<div class="mv-mesa-badge">${pendientes}</div>` : ''}
+            ${pendientes > 0
+              ? `<div class="mv-mesa-badge">${pendientes}</div>`
+              : ''}
             <span class="mv-mesa-num">${mesa.id}</span>
             <span class="mv-mesa-sub">${subTxt}</span>
           </div>
@@ -466,10 +515,18 @@ export async function renderMesero(){
     const grid = document.getElementById('mv-grid-view');
     if(!grid) return;
 
-    grid.innerHTML = MESAS.map(mesa => {
+    grid.innerHTML = mesasActuales.map(mesa => {
       const { estado, pedidosMesa, pendientes, total, mins, sesion } = estadoMesa(mesa);
-      const badgeCls = { libre:'mv-gcb-libre', activa:'mv-gcb-activa', pendiente:'mv-gcb-pendiente' }[estado];
-      const badgeTxt = { libre:'Disponible', activa:'Activa', pendiente:'Pendiente' }[estado];
+      const badgeCls = {
+        libre:     'mv-gcb-libre',
+        activa:    'mv-gcb-activa',
+        pendiente: 'mv-gcb-pendiente'
+      }[estado];
+      const badgeTxt = {
+        libre:     'Disponible',
+        activa:    'Activa',
+        pendiente: 'Pendiente'
+      }[estado];
 
       return `
         <div class="mv-grid-card ${estado}" data-mesa-id="${mesa.id}">
@@ -523,23 +580,42 @@ export async function renderMesero(){
 
   /* ── Acciones abrir/cerrar ── */
   async function accionAbrir(mesaId, btn){
-    btn.disabled = true; btn.textContent = 'Abriendo…';
-    const { error } = await supabase.rpc('open_table_session',{ p_table_id: mesaId });
-    if(error){ btn.disabled = false; btn.textContent = 'Abrir mesa'; mostrarMsg('No se pudo abrir la mesa.'); return; }
+    btn.disabled    = true;
+    btn.textContent = 'Abriendo…';
+    const { error } = await supabase.rpc('open_table_session', { p_table_id: mesaId });
+    if(error){
+      btn.disabled    = false;
+      btn.textContent = 'Abrir mesa';
+      mostrarMsg('No se pudo abrir la mesa.');
+      return;
+    }
     mesaSeleccionada = mesaId;
     await cargarDatos();
     abrirPanel(mesaId);
   }
 
   async function accionCerrar(mesaId, btn){
-    const { pedidosMesa, pendientes, sesion } = estadoMesa(MESAS.find(m => m.id === mesaId));
+    /* Buscar en mesasActuales en lugar de MESAS */
+    const mesa = mesasActuales.find(m => m.id === mesaId);
+    if(!mesa) return;
+
+    const { pendientes, sesion } = estadoMesa(mesa);
     const ok = pendientes > 0
       ? confirm(`La mesa tiene ${pendientes} pedido(s) en proceso.\n¿Seguro que deseas cerrarla?`)
       : confirm('¿Cerrar esta mesa?');
+
     if(!ok) return;
-    btn.disabled = true; btn.textContent = 'Cerrando…';
-    const { error } = await supabase.rpc('close_table_session',{ p_table_id: mesaId });
-    if(error){ btn.disabled = false; btn.textContent = 'Cerrar mesa'; mostrarMsg('No se pudo cerrar la mesa.'); return; }
+
+    btn.disabled    = true;
+    btn.textContent = 'Cerrando…';
+
+    const { error } = await supabase.rpc('close_table_session', { p_table_id: mesaId });
+    if(error){
+      btn.disabled    = false;
+      btn.textContent = 'Cerrar mesa';
+      mostrarMsg('No se pudo cerrar la mesa.');
+      return;
+    }
     if(mesaSeleccionada === mesaId) cerrarPanel();
     await cargarDatos();
   }
@@ -561,13 +637,21 @@ export async function renderMesero(){
   }
 
   function renderPanel(mesaId){
-    const mesa = MESAS.find(m => m.id === mesaId);
+    /* Buscar en mesasActuales en lugar de MESAS */
+    const mesa = mesasActuales.find(m => m.id === mesaId);
+    if(!mesa) return;
+
     const { sesion, pedidosMesa, pendientes, total, mins, estado } = estadoMesa(mesa);
 
-    const estadoColor = estado === 'pendiente' ? '#c49520' : estado === 'activa' ? '#4a6e48' : '#9e9890';
-    const estadoTxt   = estado === 'pendiente' ? 'Con pedidos pendientes' : estado === 'activa' ? 'Activa' : 'Disponible';
+    const estadoColor = estado === 'pendiente' ? '#c49520'
+                      : estado === 'activa'    ? '#4a6e48'
+                      : '#9e9890';
+    const estadoTxt   = estado === 'pendiente' ? 'Con pedidos pendientes'
+                      : estado === 'activa'    ? 'Activa'
+                      : 'Disponible';
 
-    document.getElementById('mv-panel-nombre').textContent = mesa?.nombre || `Mesa ${mesaId}`;
+    document.getElementById('mv-panel-nombre').textContent =
+      mesa.nombre || `Mesa ${mesaId}`;
     document.getElementById('mv-panel-estado').innerHTML =
       `<span style="color:${estadoColor};">● ${estadoTxt}</span>`;
 
@@ -576,17 +660,30 @@ export async function renderMesero(){
       <div class="mv-ps"><div class="mv-ps-val">${mins}</div><div class="mv-ps-label">Min</div></div>
       <div class="mv-ps"><div class="mv-ps-val">${pedidosMesa.length}</div><div class="mv-ps-label">Pedidos</div></div>
       <div class="mv-ps"><div class="mv-ps-val" style="font-size:14px;">S/${total.toFixed(0)}</div><div class="mv-ps-label">Total</div></div>
-    ` : `<div class="mv-ps" style="grid-column:1/-1;text-align:center;"><div class="mv-ps-val" style="font-size:13px;color:#9e9890;">Sin sesión</div></div>`;
+    ` : `
+      <div class="mv-ps" style="grid-column:1/-1;text-align:center;">
+        <div class="mv-ps-val" style="font-size:13px;color:#9e9890;">Sin sesión</div>
+      </div>`;
 
-    /* Body pedidos */
+    /* Body — pedidos */
     const bodyEl = document.getElementById('mv-panel-body');
     if(!sesion){
-      bodyEl.innerHTML = `<div class="mv-empty">Mesa disponible.<br>Ábrela cuando llegue el cliente.</div>`;
+      bodyEl.innerHTML = `
+        <div class="mv-empty">Mesa disponible.<br>Ábrela cuando llegue el cliente.</div>`;
     } else if(pedidosMesa.length === 0){
-      bodyEl.innerHTML = `<div class="mv-empty">Sin pedidos en esta sesión.</div>`;
+      bodyEl.innerHTML = `
+        <div class="mv-empty">Sin pedidos en esta sesión.</div>`;
     } else {
-      const pillCls = { pendiente:'mvp-pendiente', preparando:'mvp-preparando', listo:'mvp-listo' };
-      const pillTxt = { pendiente:'Pendiente', preparando:'Preparando', listo:'Listo' };
+      const pillCls = {
+        pendiente: 'mvp-pendiente',
+        preparando:'mvp-preparando',
+        listo:     'mvp-listo'
+      };
+      const pillTxt = {
+        pendiente: 'Pendiente',
+        preparando:'Preparando',
+        listo:     'Listo'
+      };
       bodyEl.innerHTML = `
         <div class="mv-panel-sec">Pedidos de esta sesión</div>
         ${pedidosMesa.map(o => {
@@ -600,7 +697,9 @@ export async function renderMesero(){
                 <span class="mv-pedido-pill ${pillCls[o.status]||''}">${pillTxt[o.status]||o.status}</span>
               </div>
               <div class="mv-pedido-items">${items}</div>
-              ${o.notes ? `<div style="font-size:11px;color:#9e9890;font-style:italic;margin-top:4px;">"${esc(o.notes)}"</div>` : ''}
+              ${o.notes
+                ? `<div style="font-size:11px;color:#9e9890;font-style:italic;margin-top:4px;">"${esc(o.notes)}"</div>`
+                : ''}
               <div class="mv-pedido-total">S/ ${Number(o.total).toFixed(2)}</div>
             </div>`;
         }).join('')}`;
@@ -634,14 +733,14 @@ export async function renderMesero(){
     setTimeout(() => { if(el.textContent === txt) el.textContent = ''; }, 4000);
   }
 
-  /* Carga inicial */
+  /* ── Carga inicial ── */
   await cargarDatos();
 
-  /* Realtime */
+  /* ── Realtime — sin cambios ── */
   supabase.channel('mv-realtime')
-    .on('postgres_changes',{ event:'*', schema:'public', table:'orders' },
+    .on('postgres_changes', { event:'*', schema:'public', table:'orders' },
       async () => { await cargarDatos(); })
-    .on('postgres_changes',{ event:'*', schema:'public', table:'table_sessions' },
+    .on('postgres_changes', { event:'*', schema:'public', table:'table_sessions' },
       async () => { await cargarDatos(); })
     .subscribe();
 }
