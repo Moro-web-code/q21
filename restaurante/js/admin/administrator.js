@@ -1,25 +1,28 @@
 /* ============================================================
    ADMINISTRATOR — Panel de Administrador
-   Movido tal cual desde el IIFE original: renderAdministrador().
-   renderAdministradorLogin() se conserva en auth/login.js
-   (no se duplica) y se importa aquí.
+   Cambios respecto al original:
+   - Eliminada dependencia de MESAS (constants.js)
+   - Nueva sección "Mesas" en sidebar
+   - cargarInicio() y cargarQR() usan getTables() desde Supabase
+   - CRUD de mesas: crear, editar nombre, activar/desactivar, QR
    ============================================================ */
 
-import { supabase } from '../config/supabase.js';
-import { RESTAURANT, MESAS } from '../config/constants.js';
-import { esc, getTableTokens } from '../customer/customer.js';
+import { supabase }   from '../config/supabase.js';
+import { RESTAURANT } from '../config/constants.js';
+import { esc, getTableTokens, getTables } from '../customer/customer.js';
 import { renderAdministradorLogin } from '../auth/login.js';
 
 const baseUrl = window.location.origin + window.location.pathname;
 
-/* ============================================================
-   ADMIN PANEL
-============================================================ */
 export async function renderAdministrador(){
   const app = document.getElementById('app');
 
   const { data: { session } } = await supabase.auth.getSession();
   if(!session){ renderAdministradorLogin(); return; }
+
+  /* Obtener user id para RPCs que verifican rol */
+  const { data: { user } } = await supabase.auth.getUser();
+  const userId = user?.id;
 
   /* Inyectar estilos del dashboard una sola vez */
   if(!document.getElementById('admin-dash-style')){
@@ -61,7 +64,6 @@ export async function renderAdministrador(){
       .adash-page{ display:none; }
       .adash-page.active{ display:block; }
 
-      /* Stats */
       .dash-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
       .dash-stat{ background:#fff; border:1px solid #e8e4dc; border-radius:10px; padding:16px 18px; }
       .ds-label{ font-size:11px; color:#9e9890; font-weight:500; letter-spacing:.02em; margin-bottom:8px; }
@@ -73,7 +75,6 @@ export async function renderAdministrador(){
       .dsi-mustard{ background:#fdf8ec; color:#c49520; }
       .dsi-gray{ background:#f2f0ec; color:#6b6560; }
 
-      /* Two col */
       .dash-two{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
       .dash-card{ background:#fff; border:1px solid #e8e4dc; border-radius:12px; overflow:hidden; }
       .dc-head{ padding:14px 18px; border-bottom:1px solid #f0ede8; display:flex; align-items:center; justify-content:space-between; }
@@ -81,7 +82,6 @@ export async function renderAdministrador(){
       .dc-sub{ font-size:11px; color:#9e9890; margin-top:2px; }
       .dc-body{ padding:14px 18px; }
 
-      /* Mesas tiles */
       .mesas-tiles{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
       .mesa-tile{ border:1px solid #e8e4dc; border-radius:8px; padding:11px 12px; display:flex; align-items:center; gap:10px; }
       .mt-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
@@ -95,7 +95,6 @@ export async function renderAdministrador(){
       .mtb-activa{ background:#edf4ec; color:#4a6e48; }
       .mtb-pendiente{ background:#fdf8ec; color:#c49520; }
 
-      /* Orders list */
       .order-row{ padding:10px 0; border-bottom:1px solid #f0ede8; display:flex; align-items:center; gap:10px; font-size:12px; }
       .order-row:last-child{ border-bottom:none; }
       .or-mesa{ font-weight:600; color:#1c1a17; width:54px; flex-shrink:0; }
@@ -108,7 +107,6 @@ export async function renderAdministrador(){
       .op-pend{ background:#fdf8ec; color:#c49520; }
       .op-entr{ background:#f0ede8; color:#6b6560; }
 
-      /* Pedidos page */
       .adash-tabs{ display:flex; gap:2px; background:#e8e4dc; border-radius:8px; padding:3px; margin-bottom:18px; }
       .adash-tab{ padding:7px 14px; border-radius:6px; font-size:12px; font-weight:500; color:#6b6560; cursor:pointer; border:none; background:none; font-family:'JetBrains Mono',monospace; transition:background .12s; }
       .adash-tab.active{ background:#fff; color:#1c1a17; }
@@ -123,7 +121,6 @@ export async function renderAdministrador(){
       .pc-btn{ padding:7px 14px; border-radius:6px; font-size:11.5px; font-weight:500; cursor:pointer; border:1px solid #e8e4dc; background:#f5f3ef; color:#6b6560; font-family:'JetBrains Mono',monospace; }
       .pc-btn.advance{ background:var(--rust); color:#fff; border-color:var(--rust); }
 
-      /* Menu page */
       .page-header{ display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
       .ph-title{ font-family:'Archivo',sans-serif; font-weight:900; font-size:20px; color:#1c1a17; letter-spacing:-.02em; }
       .ph-sub{ font-size:12px; color:#9e9890; margin-top:3px; }
@@ -147,9 +144,8 @@ export async function renderAdministrador(){
       .mc-action-btn{ flex:1; padding:6px 0; border-radius:6px; font-size:11px; font-weight:500; cursor:pointer; border:1px solid #e8e4dc; background:#f5f3ef; color:#6b6560; font-family:'JetBrains Mono',monospace; text-align:center; }
       .mc-action-btn.del{ color:var(--rust); border-color:#f0c4b4; background:#fdf1ed; }
 
-      /* QR page */
       .qr-intro{ font-size:13px; color:#6b6560; margin-bottom:20px; }
-      .qr-grid-dash{ display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:16px; }
+      .qr-grid-dash{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:16px; }
       .qr-card-dash{ background:#fff; border:1px solid #e8e4dc; border-radius:10px; padding:20px 16px; text-align:center; }
       .qr-card-name{ font-size:13px; font-weight:600; color:#1c1a17; margin-bottom:12px; font-family:'Archivo',sans-serif; }
       .qr-img-wrap{ width:110px; height:110px; background:#f5f3ef; border:1px solid #e8e4dc; border-radius:6px; margin:0 auto 14px; display:flex; align-items:center; justify-content:center; }
@@ -157,12 +153,35 @@ export async function renderAdministrador(){
       .qr-dl-btn:hover{ border-color:#c8c4bc; color:#1c1a17; }
 
       .dash-loading{ text-align:center; padding:40px; color:#9e9890; font-size:13px; }
+
+      /* ── Sección Mesas ── */
+      .tables-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+      .table-mgmt-card{ background:#fff; border:1px solid #e8e4dc; border-radius:12px; overflow:hidden; transition:box-shadow .15s; }
+      .table-mgmt-card:hover{ box-shadow:0 4px 18px rgba(0,0,0,.07); }
+      .tmc-head{ padding:14px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #f0ede8; }
+      .tmc-num{ width:34px; height:34px; border-radius:8px; background:#f5f3ef; display:flex; align-items:center; justify-content:center; font-family:'Archivo',sans-serif; font-weight:900; font-size:14px; color:#1c1a17; flex-shrink:0; }
+      .tmc-info{ flex:1; min-width:0; }
+      .tmc-name{ font-size:13.5px; font-weight:600; color:#1c1a17; font-family:'Archivo',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .tmc-id{ font-size:10px; color:#9e9890; margin-top:1px; }
+      .tmc-badge{ font-size:10px; font-weight:600; padding:3px 9px; border-radius:999px; white-space:nowrap; }
+      .tmc-badge.on{ background:#edf4ec; color:#4a6e48; }
+      .tmc-badge.off{ background:#f5f3ef; color:#9e9890; }
+      .tmc-qr{ padding:16px; display:flex; justify-content:center; background:#fafaf8; border-bottom:1px solid #f0ede8; }
+      .tmc-qr img{ display:block; border-radius:4px; }
+      .tmc-qr-notoken{ font-size:11px; color:#9e9890; padding:20px 0; text-align:center; }
+      .tmc-actions{ padding:12px 14px; display:flex; gap:8px; flex-wrap:wrap; }
+      .tmc-btn{ flex:1; min-width:70px; padding:7px 10px; border-radius:7px; font-size:11px; font-weight:500; cursor:pointer; border:1px solid #e8e4dc; background:#f5f3ef; color:#6b6560; font-family:'JetBrains Mono',monospace; text-align:center; transition:background .12s,border-color .12s; white-space:nowrap; }
+      .tmc-btn:hover{ border-color:#c8c4bc; color:#1c1a17; }
+      .tmc-btn.primary{ background:var(--rust); color:#fff; border-color:var(--rust); }
+      .tmc-btn.primary:hover{ background:#c0502a; }
+      .tmc-btn.danger{ color:var(--rust); border-color:#f0c4b4; background:#fdf1ed; }
+      .tmc-btn.danger:hover{ background:#fae0d8; }
+      .tmc-btn:disabled{ opacity:.5; cursor:not-allowed; }
     `;
     document.head.appendChild(st);
   }
 
-  /* Quitar padding del .screen para full-height */
-  app.style.padding = '0';
+  app.style.padding  = '0';
   app.style.maxWidth = 'none';
 
   app.innerHTML = `
@@ -188,6 +207,10 @@ export async function renderAdministrador(){
           <button class="sb-item" data-adash="menu">
             <i class="ti ti-bowl"></i> Menú
           </button>
+          <div class="sb-section">Configuración</div>
+          <button class="sb-item" data-adash="mesas">
+            <i class="ti ti-armchair"></i> Mesas
+          </button>
           <button class="sb-item" data-adash="qr">
             <i class="ti ti-qrcode"></i> Códigos QR
           </button>
@@ -209,7 +232,7 @@ export async function renderAdministrador(){
           <div class="atb-right">
             <span class="atb-date" id="adash-date"></span>
             <button class="atb-btn" id="adash-refresh-btn">↻ Actualizar</button>
-            <button class="atb-btn primary" id="adash-add-btn" style="display:none">+ Añadir producto</button>
+            <button class="atb-btn primary" id="adash-add-btn" style="display:none">+ Añadir</button>
             <button class="atb-btn" id="adash-logout-btn">← Salir</button>
           </div>
         </div>
@@ -269,6 +292,16 @@ export async function renderAdministrador(){
             <div id="adash-menu-content"><div class="dash-loading">Cargando…</div></div>
           </div>
 
+          <!-- MESAS -->
+          <div class="adash-page" id="adash-mesas">
+            <div class="page-header">
+              <div><div class="ph-title">Mesas</div><div class="ph-sub">Gestión de mesas del restaurante</div></div>
+            </div>
+            <div class="tables-grid" id="adash-tables-grid">
+              <div class="dash-loading">Cargando…</div>
+            </div>
+          </div>
+
           <!-- QR -->
           <div class="adash-page" id="adash-qr">
             <div class="page-header">
@@ -283,29 +316,35 @@ export async function renderAdministrador(){
     </div>
   `;
 
-  /* Cargar Tabler Icons si no están */
+  /* Tabler Icons */
   if(!document.querySelector('link[href*="tabler-icons"]')){
     const lk = document.createElement('link');
-    lk.rel = 'stylesheet';
+    lk.rel  = 'stylesheet';
     lk.href = 'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css';
     document.head.appendChild(lk);
   }
 
-  /* Fecha en topbar */
   document.getElementById('adash-date').textContent =
     new Date().toLocaleDateString('es-PE',{weekday:'short',day:'numeric',month:'short'});
 
   /* Logout */
   document.getElementById('adash-logout-btn').onclick = async () => {
-    app.style.padding = '';
+    app.style.padding  = '';
     app.style.maxWidth = '';
     await supabase.auth.signOut();
     renderAdministradorLogin();
   };
 
-  /* Navegación entre páginas */
+  /* Navegación */
   let paginaActual = 'inicio';
-  const titulos = { inicio:'Inicio', pedidos:'Pedidos', menu:'Menú', qr:'Códigos QR' };
+  const titulos    = {
+    inicio: 'Inicio',
+    pedidos:'Pedidos',
+    menu:   'Menú',
+    mesas:  'Mesas',
+    qr:     'Códigos QR'
+  };
+  const addBtnLabels = { menu:'+ Añadir producto', mesas:'+ Nueva mesa' };
 
   document.querySelectorAll('.sb-item[data-adash]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -313,15 +352,21 @@ export async function renderAdministrador(){
       document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       document.querySelectorAll('.adash-page').forEach(p => p.classList.remove('active'));
-      document.getElementById('adash-'+key).classList.add('active');
+      document.getElementById('adash-' + key).classList.add('active');
       document.getElementById('adash-topbar-title').textContent = titulos[key];
-      document.getElementById('adash-add-btn').style.display = key === 'menu' ? 'flex' : 'none';
+      const addBtn = document.getElementById('adash-add-btn');
+      if(addBtnLabels[key]){
+        addBtn.style.display  = 'flex';
+        addBtn.textContent    = addBtnLabels[key];
+      } else {
+        addBtn.style.display  = 'none';
+      }
       paginaActual = key;
       cargarPagina(key);
     });
   });
 
-  /* Tabs de pedidos */
+  /* Tabs pedidos */
   let filtroActual = 'todos';
   document.querySelectorAll('.adash-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -333,57 +378,80 @@ export async function renderAdministrador(){
   });
 
   document.getElementById('adash-refresh-btn').onclick = () => cargarPagina(paginaActual);
+
   document.getElementById('adash-add-btn').onclick = () => {
-  abrirModalProducto();
+    if(paginaActual === 'menu')  abrirModalProducto();
+    if(paginaActual === 'mesas') abrirModalMesa();
   };
-  /* ── Carga de datos por página ── */
+
+  /* ── Carga por página ── */
   async function cargarPagina(key){
-    if(key === 'inicio') await cargarInicio();
+    if(key === 'inicio')  await cargarInicio();
     if(key === 'pedidos') await cargarPedidos();
-    if(key === 'menu') await cargarMenu();
-    if(key === 'qr') await cargarQR();
+    if(key === 'menu')    await cargarMenu();
+    if(key === 'mesas')   await cargarMesas();
+    if(key === 'qr')      await cargarQR();
   }
 
-  /* ── INICIO ── */
+  /* ══════════════════════════════════════════════════════════
+     INICIO
+  ══════════════════════════════════════════════════════════ */
   async function cargarInicio(){
     const inicioDia = new Date(
       new Date().toLocaleDateString('en-CA',{timeZone:'America/Lima'}) + 'T00:00:00-05:00'
     );
 
-    const [{ data: orders }, { data: sesiones }, { data: menuItems }] = await Promise.all([
-      supabase.from('orders').select('id,total,status,created_at,items,table_name').gte('created_at', inicioDia.toISOString()).order('created_at',{ascending:false}),
+    const [
+      { data: orders  },
+      { data: sesiones },
+      todasMesas
+    ] = await Promise.all([
+      supabase.from('orders').select('id,total,status,created_at,items,table_name,table_id')
+        .gte('created_at', inicioDia.toISOString())
+        .order('created_at',{ascending:false}),
       supabase.rpc('get_table_sessions'),
-      supabase.from('menu_items').select('id,active')
+      getTables()
     ]);
 
-    const ords = orders || [];
+    const ords = orders   || [];
     const sess = sesiones || [];
 
-    const totalVentas = ords.reduce((s,o) => s + Number(o.total||0), 0);
-    const ticketProm  = ords.length > 0 ? totalVentas / ords.length : 0;
-    const mesasActivas = MESAS.filter(m => sess.find(s => Number(s.table_id) === m.id && s.status === 'active')).length;
+    const totalVentas  = ords.reduce((s,o) => s + Number(o.total||0), 0);
+    const ticketProm   = ords.length > 0 ? totalVentas / ords.length : 0;
+    const mesasActivas = todasMesas.filter(
+      m => sess.find(s => Number(s.table_id) === m.id && s.status === 'active')
+    ).length;
 
     document.getElementById('ds-orders').textContent = ords.length;
     document.getElementById('ds-sales').textContent  = `S/ ${totalVentas.toFixed(2)}`;
-    document.getElementById('ds-mesas').textContent  = `${mesasActivas} / ${MESAS.length}`;
+    document.getElementById('ds-mesas').textContent  = `${mesasActivas} / ${todasMesas.length}`;
     document.getElementById('ds-avg').textContent    = `S/ ${ticketProm.toFixed(2)}`;
 
-    /* Pedidos activos por mesa */
-    const pedidosActivos = ords.filter(o => ['pendiente','preparando','listo'].includes(o.status));
+    const pedidosActivos = ords.filter(o =>
+      ['pendiente','preparando','listo'].includes(o.status)
+    );
 
     /* Tiles de mesas */
     const tilesEl = document.getElementById('adash-mesas-tiles');
-    tilesEl.innerHTML = MESAS.map(mesa => {
+    tilesEl.innerHTML = todasMesas.map(mesa => {
       const sesActiva = sess.find(s => Number(s.table_id) === mesa.id && s.status === 'active');
-      const pedMesa   = pedidosActivos.filter(o => {
-        const sId = sesActiva?.id;
-        return Number(o.table_id||0) === mesa.id && (!sId || o.session_id === sId);
-      });
-      const pend = pedMesa.filter(o => o.status === 'pendiente' || o.status === 'preparando').length;
+      const pedMesa   = pedidosActivos.filter(o => Number(o.table_id||0) === mesa.id);
+      const pend      = pedMesa.filter(o =>
+        o.status === 'pendiente' || o.status === 'preparando'
+      ).length;
 
       let dotCls = 'mtd-libre', badgeCls = 'mtb-libre', badgeTxt = 'Libre', infoTxt = 'Sin actividad';
-      if(sesActiva && pend > 0){ dotCls='mtd-pendiente'; badgeCls='mtb-pendiente'; badgeTxt='Pendiente'; infoTxt=`${pend} pendiente${pend>1?'s':''}`; }
-      else if(sesActiva){ dotCls='mtd-activa'; badgeCls='mtb-activa'; badgeTxt='Activa'; infoTxt=`${pedMesa.length} pedido${pedMesa.length!==1?'s':''}`; }
+      if(sesActiva && pend > 0){
+        dotCls = 'mtd-pendiente'; badgeCls = 'mtb-pendiente';
+        badgeTxt = 'Pendiente'; infoTxt = `${pend} pendiente${pend>1?'s':''}`;
+      } else if(sesActiva){
+        dotCls = 'mtd-activa'; badgeCls = 'mtb-activa';
+        badgeTxt = 'Activa'; infoTxt = `${pedMesa.length} pedido${pedMesa.length!==1?'s':''}`;
+      }
+
+      if(!mesa.active){
+        dotCls = 'mtd-libre'; badgeCls = 'mtb-libre'; badgeTxt = 'Inactiva'; infoTxt = 'Desactivada';
+      }
 
       return `
         <div class="mesa-tile">
@@ -397,14 +465,14 @@ export async function renderAdministrador(){
     }).join('');
 
     /* Pedidos recientes */
-    const recEl = document.getElementById('adash-recent-orders');
+    const recEl     = document.getElementById('adash-recent-orders');
     const recientes = ords.slice(0, 8);
     if(recientes.length === 0){
       recEl.innerHTML = '<div class="dash-loading">Sin pedidos hoy.</div>';
     } else {
       recEl.innerHTML = recientes.map(o => {
-        const hora = new Date(o.created_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
-        const items = Array.isArray(o.items) ? o.items.map(i => `${i.name} ×${i.qty}`).join(', ') : '';
+        const hora    = new Date(o.created_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+        const items   = Array.isArray(o.items) ? o.items.map(i=>`${i.name} ×${i.qty}`).join(', ') : '';
         const pillCls = o.status==='preparando'?'op-prep':o.status==='listo'?'op-listo':o.status==='pendiente'?'op-pend':'op-entr';
         const pillTxt = o.status==='preparando'?'Preparando':o.status==='listo'?'Listo':o.status==='pendiente'?'Pendiente':'Entregado';
         return `
@@ -419,14 +487,25 @@ export async function renderAdministrador(){
     }
   }
 
-  /* ── PEDIDOS ── */
+  /* ══════════════════════════════════════════════════════════
+     PEDIDOS
+  ══════════════════════════════════════════════════════════ */
   let todosLosPedidos = [];
+
   async function cargarPedidos(){
-    const { data } = await supabase.from('orders').select('*').order('created_at',{ascending:false}).limit(60);
+    const { data } = await supabase
+      .from('orders').select('*')
+      .order('created_at',{ascending:false}).limit(60);
+
     todosLosPedidos = (data || []).map(o => ({
-      id: o.id, table: o.table_name, tableId: o.table_id,
-      items: o.items, total: Number(o.total), notes: o.notes||'',
-      status: o.status, createdAt: o.created_at
+      id:        o.id,
+      table:     o.table_name,
+      tableId:   o.table_id,
+      items:     o.items,
+      total:     Number(o.total),
+      notes:     o.notes||'',
+      status:    o.status,
+      createdAt: o.created_at
     }));
     renderPedidos(filtroActual);
   }
@@ -439,12 +518,16 @@ export async function renderAdministrador(){
     const el = document.getElementById('adash-pedidos-list');
     if(lista.length === 0){ el.innerHTML='<div class="dash-loading">Sin pedidos.</div>'; return; }
 
-    const nextLabel = { pendiente:'Empezar preparación', preparando:'Marcar listo', listo:'Marcar entregado' };
+    const nextLabel = {
+      pendiente: 'Empezar preparación',
+      preparando:'Marcar listo',
+      listo:     'Marcar entregado'
+    };
 
     el.innerHTML = lista.slice(0,20).map(o => {
-      const hora = new Date(o.createdAt).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
-      const mins = Math.max(0, Math.floor((Date.now()-new Date(o.createdAt).getTime())/60000));
-      const items = Array.isArray(o.items) ? o.items.map(i=>`${esc(i.name)} ×${i.qty}`).join(' · ') : '';
+      const hora    = new Date(o.createdAt).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+      const mins    = Math.max(0, Math.floor((Date.now()-new Date(o.createdAt).getTime())/60000));
+      const items   = Array.isArray(o.items) ? o.items.map(i=>`${esc(i.name)} ×${i.qty}`).join(' · ') : '';
       const pillCls = o.status==='preparando'?'op-prep':o.status==='listo'?'op-listo':o.status==='pendiente'?'op-pend':'op-entr';
       const pillTxt = o.status==='preparando'?'En preparación':o.status==='listo'?'Listo':o.status==='pendiente'?'Pendiente':'Entregado';
       const advBtn  = nextLabel[o.status]
@@ -472,7 +555,7 @@ export async function renderAdministrador(){
 
     el.querySelectorAll('.advance').forEach(btn => {
       btn.onclick = async () => {
-        btn.disabled = true;
+        btn.disabled    = true;
         btn.textContent = 'Actualizando…';
         await supabase.from('orders').update({status: btn.dataset.next}).eq('id', btn.dataset.id);
         await cargarPedidos();
@@ -480,11 +563,16 @@ export async function renderAdministrador(){
     });
   }
 
-  /* ── MENÚ ── */
+  /* ══════════════════════════════════════════════════════════
+     MENÚ
+  ══════════════════════════════════════════════════════════ */
   async function cargarMenu(){
-    const { data } = await supabase.from('menu_items').select('*').order('category').order('id');
+    const { data } = await supabase
+      .from('menu_items').select('*')
+      .order('category').order('id');
+
     const items = data || [];
-    const el = document.getElementById('adash-menu-content');
+    const el    = document.getElementById('adash-menu-content');
 
     if(items.length === 0){ el.innerHTML='<div class="dash-loading">Sin productos.</div>'; return; }
 
@@ -515,512 +603,277 @@ export async function renderAdministrador(){
               </div>
             </div>
             <div class="mc-actions">
-  <button
-    class="mc-action-btn edit-product-btn"
-    data-id="${p.id}">
-    Editar
-  </button>
-
-  <button
-    class="mc-action-btn del delete-product-btn"
-    data-id="${p.id}">
-    Eliminar
-  </button>
-</div>
+              <button class="mc-action-btn edit-product-btn" data-id="${p.id}">Editar</button>
+              <button class="mc-action-btn del delete-product-btn" data-id="${p.id}">Eliminar</button>
+            </div>
           </div>`).join('')}
       </div>`).join('');
-        /* ============================================================
-       EDITAR PRODUCTO
-    ============================================================ */
 
     el.querySelectorAll('.edit-product-btn').forEach(btn => {
-
-      btn.onclick = async () => {
-
-        const id = btn.dataset.id;
-
-        const producto = items.find(p => String(p.id) === String(id));
-
-        if(!producto) return;
-
-        abrirModalProducto(producto);
-
+      btn.onclick = () => {
+        const producto = items.find(p => String(p.id) === String(btn.dataset.id));
+        if(producto) abrirModalProducto(producto);
       };
-
     });
-
-
-    /* ============================================================
-       ELIMINAR PRODUCTO
-    ============================================================ */
 
     el.querySelectorAll('.delete-product-btn').forEach(btn => {
-
       btn.onclick = async () => {
-
-        const id = btn.dataset.id;
-
-        const producto = items.find(p => String(p.id) === String(id));
-
+        const producto = items.find(p => String(p.id) === String(btn.dataset.id));
         if(!producto) return;
-
-        const confirmar = confirm(
-          `¿Seguro que deseas eliminar "${producto.name}"?`
-        );
-
-        if(!confirmar) return;
-
-        btn.disabled = true;
+        if(!confirm(`¿Seguro que deseas eliminar "${producto.name}"?`)) return;
+        btn.disabled    = true;
         btn.textContent = 'Eliminando…';
-
-        const { error } = await supabase
-          .from('menu_items')
-          .delete()
-          .eq('id', id);
-
+        const { error } = await supabase.from('menu_items').delete().eq('id', btn.dataset.id);
         if(error){
-
-          console.error('Error eliminando producto:', error);
-
-          alert(
-            'No se pudo eliminar el producto.\n\n' +
-            error.message
-          );
-
-          btn.disabled = false;
+          alert('No se pudo eliminar.\n\n' + error.message);
+          btn.disabled    = false;
           btn.textContent = 'Eliminar';
-
           return;
         }
-
         await cargarMenu();
-
       };
-
     });
   }
-  /* ============================================================
-     MODAL PRODUCTO
-  ============================================================ */
 
-  function abrirModalProducto(producto = null){
+  /* ══════════════════════════════════════════════════════════
+     MESAS — gestión completa
+  ══════════════════════════════════════════════════════════ */
+  async function cargarMesas(){
+    const [mesas, tokens] = await Promise.all([
+      getTables(),
+      getTableTokens()
+    ]);
 
-    const editando = !!producto;
+    const el = document.getElementById('adash-tables-grid');
+
+    if(mesas.length === 0){
+      el.innerHTML = '<div class="dash-loading">No hay mesas. Crea la primera.</div>';
+      return;
+    }
+
+    el.innerHTML = mesas.map(mesa => {
+      const td  = tokens.find(t => t.table_id === mesa.id);
+      const url = td ? (() => {
+        const u = new URL(baseUrl);
+        u.search = '';
+        u.searchParams.set('token', td.token);
+        return u.toString();
+      })() : null;
+
+      const qrSrc = url
+        ? `https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=6&data=${encodeURIComponent(url)}`
+        : null;
+
+      return `
+        <div class="table-mgmt-card" data-table-id="${mesa.id}">
+          <div class="tmc-head">
+            <div class="tmc-num">${mesa.id}</div>
+            <div class="tmc-info">
+              <div class="tmc-name">${esc(mesa.nombre)}</div>
+              <div class="tmc-id">ID #${mesa.id}</div>
+            </div>
+            <span class="tmc-badge ${mesa.active ? 'on' : 'off'}">
+              ${mesa.active ? 'Activa' : 'Inactiva'}
+            </span>
+          </div>
+
+          <div class="tmc-qr">
+            ${qrSrc
+              ? `<img src="${qrSrc}" width="120" height="120" alt="QR ${esc(mesa.nombre)}">`
+              : `<div class="tmc-qr-notoken">Sin token QR<br><small>Usa "Nuevo QR"</small></div>`}
+          </div>
+
+          <div class="tmc-actions">
+            <button class="tmc-btn tmc-edit" data-id="${mesa.id}" data-name="${esc(mesa.nombre)}">
+              Editar
+            </button>
+            <button class="tmc-btn ${mesa.active ? 'danger tmc-deactivate' : 'primary tmc-activate'}"
+              data-id="${mesa.id}" data-active="${mesa.active}">
+              ${mesa.active ? 'Desactivar' : 'Activar'}
+            </button>
+            <button class="tmc-btn tmc-regen" data-id="${mesa.id}" title="Regenerar QR">
+              ↻ QR
+            </button>
+            ${url
+              ? `<a href="${`https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=10&data=${encodeURIComponent(url)}`}" download="QR-${esc(mesa.nombre)}.png" target="_blank" style="flex:1;min-width:70px;">
+                   <button class="tmc-btn" style="width:100%">↓ QR</button>
+                 </a>`
+              : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    /* Editar nombre */
+    el.querySelectorAll('.tmc-edit').forEach(btn => {
+      btn.onclick = () => abrirModalMesa({ id: Number(btn.dataset.id), nombre: btn.dataset.name });
+    });
+
+    /* Activar / Desactivar */
+    el.querySelectorAll('.tmc-deactivate, .tmc-activate').forEach(btn => {
+      btn.onclick = async () => {
+        const id     = Number(btn.dataset.id);
+        const active = btn.dataset.active === 'true';
+        const accion = active ? 'desactivar' : 'activar';
+        if(!confirm(`¿Seguro que deseas ${accion} esta mesa?`)) return;
+        btn.disabled    = true;
+        btn.textContent = 'Guardando…';
+        const { error } = await supabase
+          .from('tables')
+          .update({ active: !active })
+          .eq('id', id);
+        if(error){
+          alert('No se pudo actualizar.\n\n' + error.message);
+          btn.disabled = false;
+          return;
+        }
+        await cargarMesas();
+      };
+    });
+
+    /* Regenerar QR */
+    el.querySelectorAll('.tmc-regen').forEach(btn => {
+      btn.onclick = async () => {
+        const id = Number(btn.dataset.id);
+        if(!confirm('¿Regenerar el QR? El QR anterior dejará de funcionar.')) return;
+        btn.disabled    = true;
+        btn.textContent = '…';
+        const { data, error } = await supabase.rpc('regenerate_table_token', {
+          p_table_id: id,
+          p_user_id:  userId
+        });
+        if(error || !data?.success){
+          alert('No se pudo regenerar.\n\n' + (error?.message || data?.error || ''));
+          btn.disabled    = false;
+          btn.textContent = '↻ QR';
+          return;
+        }
+        await cargarMesas();
+      };
+    });
+  }
+
+  /* Modal crear / editar mesa */
+  function abrirModalMesa(mesa = null){
+    const editando = !!mesa;
 
     const overlay = document.createElement('div');
-
-    overlay.id = 'admin-product-modal';
-
+    overlay.id    = 'admin-table-modal';
     overlay.style.cssText = `
-      position:fixed;
-      inset:0;
+      position:fixed; inset:0;
       background:rgba(20,18,15,.55);
       backdrop-filter:blur(5px);
       z-index:9999;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:20px;
-      box-sizing:border-box;
+      display:flex; align-items:center; justify-content:center;
+      padding:20px; box-sizing:border-box;
     `;
 
     overlay.innerHTML = `
-
-      <div style="
-        width:min(480px,100%);
-        background:#fff;
-        border-radius:12px;
-        border:1px solid #e7e4de;
-        box-shadow:0 25px 70px rgba(0,0,0,.20);
-        overflow:hidden;
-      ">
-
-        <div style="
-          padding:18px 20px;
-          border-bottom:1px solid #e7e4de;
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-        ">
-
+      <div style="width:min(420px,100%);background:#fff;border-radius:12px;border:1px solid #e7e4de;box-shadow:0 25px 70px rgba(0,0,0,.20);overflow:hidden;">
+        <div style="padding:18px 20px;border-bottom:1px solid #e7e4de;display:flex;align-items:center;justify-content:space-between;">
           <div>
-            <div style="
-              font-family:Archivo,sans-serif;
-              font-size:15px;
-              font-weight:800;
-              color:#181715;
-            ">
-              ${editando ? 'Editar producto' : 'Añadir producto'}
+            <div style="font-family:Archivo,sans-serif;font-size:15px;font-weight:800;color:#181715;">
+              ${editando ? 'Editar mesa' : 'Nueva mesa'}
             </div>
-
-            <div style="
-              margin-top:4px;
-              font-size:10px;
-              color:#918b83;
-            ">
-              ${editando
-                ? 'Modifica la información del producto'
-                : 'Añade un nuevo producto al menú'}
+            <div style="margin-top:4px;font-size:10px;color:#918b83;">
+              ${editando ? 'Modifica el nombre de la mesa' : 'La mesa recibirá un QR automáticamente'}
             </div>
           </div>
-
-          <button
-            id="admin-product-close"
-            style="
-              width:30px;
-              height:30px;
-              border:0;
-              border-radius:6px;
-              background:#f5f3ef;
-              color:#6b6560;
-              cursor:pointer;
-              font-size:18px;
-            "
-          >
-            ×
-          </button>
-
+          <button id="tbl-modal-close" style="width:30px;height:30px;border:0;border-radius:6px;background:#f5f3ef;color:#6b6560;cursor:pointer;font-size:18px;">×</button>
         </div>
-
 
         <div style="padding:20px;">
-
-          <div style="margin-bottom:14px;">
-
-            <label style="
-              display:block;
-              margin-bottom:6px;
-              font-size:10px;
-              font-weight:700;
-              color:#625d56;
-              text-transform:uppercase;
-            ">
-              Nombre
+          <div style="margin-bottom:16px;">
+            <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:700;color:#625d56;text-transform:uppercase;">
+              Nombre de la mesa
             </label>
-
-            <input
-              id="admin-product-name"
-              type="text"
-              value="${esc(producto?.name || '')}"
-              placeholder="Ej. Lomo saltado"
-              style="
-                width:100%;
-                height:40px;
-                padding:0 11px;
-                box-sizing:border-box;
-                border:1px solid #ddd9d2;
-                border-radius:7px;
-                outline:none;
-                font-family:inherit;
-              "
-            >
-
+            <input id="tbl-modal-name" type="text"
+              value="${esc(mesa?.nombre || '')}"
+              placeholder="Ej. Mesa 5, VIP 1, Terraza A…"
+              style="width:100%;height:40px;padding:0 11px;box-sizing:border-box;border:1px solid #ddd9d2;border-radius:7px;outline:none;font-family:inherit;font-size:13px;">
           </div>
 
-
-          <div style="margin-bottom:14px;">
-
-            <label style="
-              display:block;
-              margin-bottom:6px;
-              font-size:10px;
-              font-weight:700;
-              color:#625d56;
-              text-transform:uppercase;
-            ">
-              Categoría
-            </label>
-
-            <input
-              id="admin-product-category"
-              type="text"
-              value="${esc(producto?.category || '')}"
-              placeholder="Ej. Platos"
-              style="
-                width:100%;
-                height:40px;
-                padding:0 11px;
-                box-sizing:border-box;
-                border:1px solid #ddd9d2;
-                border-radius:7px;
-                outline:none;
-                font-family:inherit;
-              "
-            >
-
-          </div>
-
-
-          <div style="margin-bottom:14px;">
-
-            <label style="
-              display:block;
-              margin-bottom:6px;
-              font-size:10px;
-              font-weight:700;
-              color:#625d56;
-              text-transform:uppercase;
-            ">
-              Precio
-            </label>
-
-            <input
-              id="admin-product-price"
-              type="number"
-              step="0.01"
-              min="0"
-              value="${producto?.price ?? ''}"
-              placeholder="0.00"
-              style="
-                width:100%;
-                height:40px;
-                padding:0 11px;
-                box-sizing:border-box;
-                border:1px solid #ddd9d2;
-                border-radius:7px;
-                outline:none;
-                font-family:inherit;
-              "
-            >
-
-          </div>
-
-
-          <div style="margin-bottom:14px;">
-
-            <label style="
-              display:block;
-              margin-bottom:6px;
-              font-size:10px;
-              font-weight:700;
-              color:#625d56;
-              text-transform:uppercase;
-            ">
-              Descripción
-            </label>
-
-            <textarea
-              id="admin-product-description"
-              placeholder="Descripción del producto"
-              style="
-                width:100%;
-                min-height:80px;
-                padding:10px 11px;
-                box-sizing:border-box;
-                border:1px solid #ddd9d2;
-                border-radius:7px;
-                outline:none;
-                resize:vertical;
-                font-family:inherit;
-              "
-            >${esc(producto?.description || '')}</textarea>
-
-          </div>
-
-
-          <label style="
-            display:flex;
-            align-items:center;
-            gap:9px;
-            font-size:11px;
-            color:#4e4943;
-            cursor:pointer;
-            margin-bottom:20px;
-          ">
-
-            <input
-              id="admin-product-active"
-              type="checkbox"
-              ${producto?.active !== false ? 'checked' : ''}
-            >
-
-            Producto disponible
-
-          </label>
-
-
-          <div style="
-            display:flex;
-            gap:8px;
-            justify-content:flex-end;
-          ">
-
-            <button
-              id="admin-product-cancel"
-              style="
-                height:38px;
-                padding:0 15px;
-                border:1px solid #ddd9d2;
-                border-radius:7px;
-                background:#fff;
-                color:#6b6560;
-                cursor:pointer;
-              "
-            >
-              Cancelar
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button id="tbl-modal-cancel" style="height:38px;padding:0 15px;border:1px solid #ddd9d2;border-radius:7px;background:#fff;color:#6b6560;cursor:pointer;font-family:inherit;">Cancelar</button>
+            <button id="tbl-modal-save" style="height:38px;padding:0 17px;border:1px solid #1d1c1a;border-radius:7px;background:#1d1c1a;color:#fff;cursor:pointer;font-weight:700;font-family:inherit;">
+              ${editando ? 'Guardar cambios' : 'Crear mesa'}
             </button>
-
-            <button
-              id="admin-product-save"
-              style="
-                height:38px;
-                padding:0 17px;
-                border:1px solid #1d1c1a;
-                border-radius:7px;
-                background:#1d1c1a;
-                color:#fff;
-                cursor:pointer;
-                font-weight:700;
-              "
-            >
-              ${editando ? 'Guardar cambios' : 'Añadir producto'}
-            </button>
-
           </div>
 
-          <div
-            id="admin-product-error"
-            style="
-              min-height:18px;
-              margin-top:10px;
-              color:#a9472f;
-              font-size:11px;
-            "
-          ></div>
-
+          <div id="tbl-modal-error" style="min-height:18px;margin-top:10px;color:#a9472f;font-size:11px;"></div>
         </div>
-
       </div>
     `;
 
     document.body.appendChild(overlay);
 
+    const cerrar = () => overlay.remove();
+    document.getElementById('tbl-modal-close').onclick  = cerrar;
+    document.getElementById('tbl-modal-cancel').onclick = cerrar;
 
-    const cerrar = () => {
-      overlay.remove();
+    /* Focus automático */
+    setTimeout(() => document.getElementById('tbl-modal-name')?.focus(), 50);
+
+    document.getElementById('tbl-modal-save').onclick = async () => {
+      const name     = document.getElementById('tbl-modal-name').value.trim();
+      const errorEl  = document.getElementById('tbl-modal-error');
+      const saveBtn  = document.getElementById('tbl-modal-save');
+
+      errorEl.textContent = '';
+
+      if(!name){
+        errorEl.textContent = 'El nombre es obligatorio.';
+        return;
+      }
+
+      saveBtn.disabled    = true;
+      saveBtn.textContent = 'Guardando…';
+
+      if(editando){
+        /* Editar nombre */
+        const { error } = await supabase
+          .from('tables')
+          .update({ name })
+          .eq('id', mesa.id);
+
+        if(error){
+          errorEl.textContent = error.message;
+          saveBtn.disabled    = false;
+          saveBtn.textContent = 'Guardar cambios';
+          return;
+        }
+
+      } else {
+        /* Crear mesa + token QR via RPC */
+        const { data, error } = await supabase.rpc('create_table_with_token', {
+          p_name:    name,
+          p_user_id: userId
+        });
+
+        if(error || !data?.success){
+          errorEl.textContent = error?.message || data?.error || 'Error al crear la mesa.';
+          saveBtn.disabled    = false;
+          saveBtn.textContent = 'Crear mesa';
+          return;
+        }
+      }
+
+      cerrar();
+      await cargarMesas();
     };
-
-
-    document.getElementById('admin-product-close').onclick = cerrar;
-    document.getElementById('admin-product-cancel').onclick = cerrar;
-
-
-    document.getElementById('admin-product-save').onclick =
-      async () => {
-
-        const name =
-          document.getElementById('admin-product-name').value.trim();
-
-        const category =
-          document.getElementById('admin-product-category').value.trim();
-
-        const price =
-          Number(document.getElementById('admin-product-price').value);
-
-        const description =
-          document.getElementById('admin-product-description').value.trim();
-
-        const active =
-          document.getElementById('admin-product-active').checked;
-
-        const errorEl =
-          document.getElementById('admin-product-error');
-
-        const saveBtn =
-          document.getElementById('admin-product-save');
-
-
-        errorEl.textContent = '';
-
-
-        if(!name){
-
-          errorEl.textContent = 'El nombre es obligatorio.';
-          return;
-
-        }
-
-        if(!category){
-
-          errorEl.textContent = 'La categoría es obligatoria.';
-          return;
-
-        }
-
-        if(!Number.isFinite(price) || price < 0){
-
-          errorEl.textContent = 'Ingresa un precio válido.';
-          return;
-
-        }
-
-
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Guardando…';
-
-
-        const datos = {
-          name,
-          category,
-          price,
-          description,
-          active
-        };
-
-
-        let resultado;
-
-
-        if(editando){
-
-          resultado = await supabase
-            .from('menu_items')
-            .update(datos)
-            .eq('id', producto.id);
-
-        }else{
-
-          resultado = await supabase
-            .from('menu_items')
-            .insert(datos);
-
-        }
-
-
-        if(resultado.error){
-
-          console.error(
-            'Error guardando producto:',
-            resultado.error
-          );
-
-          errorEl.textContent =
-            resultado.error.message;
-
-          saveBtn.disabled = false;
-          saveBtn.textContent =
-            editando
-              ? 'Guardar cambios'
-              : 'Añadir producto';
-
-          return;
-
-        }
-
-
-        cerrar();
-
-        await cargarMenu();
-
-      };
-
   }
-  /* ── QR ── */
+
+  /* ══════════════════════════════════════════════════════════
+     QR (página de solo visualización / descarga)
+  ══════════════════════════════════════════════════════════ */
   async function cargarQR(){
-    const tokens = await getTableTokens();
+    const [mesas, tokens] = await Promise.all([
+      getTables(),
+      getTableTokens()
+    ]);
+
     const el = document.getElementById('adash-qr-grid');
 
-    el.innerHTML = MESAS.map(m => {
+    el.innerHTML = mesas.map(m => {
       const td = tokens.find(t => t.table_id === m.id);
       if(!td) return `
         <div class="qr-card-dash">
@@ -1028,10 +881,11 @@ export async function renderAdministrador(){
           <div class="qr-img-wrap" style="color:#c8c5c0;font-size:12px;">Sin token</div>
         </div>`;
 
-      const url = new URL(baseUrl);
-      url.search = '';
+      const url    = new URL(baseUrl);
+      url.search   = '';
       url.searchParams.set('token', td.token);
-      const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=6&data=${encodeURIComponent(url.toString())}`;
+      const qrSrc  = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=6&data=${encodeURIComponent(url.toString())}`;
+      const qrLarge= qrSrc.replace('200x200','600x600');
 
       return `
         <div class="qr-card-dash">
@@ -1039,11 +893,119 @@ export async function renderAdministrador(){
           <div class="qr-img-wrap">
             <img src="${qrSrc}" width="100" height="100" alt="QR ${esc(m.nombre)}" style="display:block;">
           </div>
-          <a href="${qrSrc.replace('200x200','400x400')}" download="QR-${esc(m.nombre)}.png" target="_blank">
+          <a href="${qrLarge}" download="QR-${esc(m.nombre)}.png" target="_blank">
             <button class="qr-dl-btn">↓ Descargar</button>
           </a>
         </div>`;
     }).join('');
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     MODAL PRODUCTO (sin cambios respecto al original)
+  ══════════════════════════════════════════════════════════ */
+  function abrirModalProducto(producto = null){
+    const editando = !!producto;
+
+    const overlay    = document.createElement('div');
+    overlay.id       = 'admin-product-modal';
+    overlay.style.cssText = `
+      position:fixed; inset:0;
+      background:rgba(20,18,15,.55);
+      backdrop-filter:blur(5px);
+      z-index:9999;
+      display:flex; align-items:center; justify-content:center;
+      padding:20px; box-sizing:border-box;
+    `;
+
+    overlay.innerHTML = `
+      <div style="width:min(480px,100%);background:#fff;border-radius:12px;border:1px solid #e7e4de;box-shadow:0 25px 70px rgba(0,0,0,.20);overflow:hidden;">
+        <div style="padding:18px 20px;border-bottom:1px solid #e7e4de;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-family:Archivo,sans-serif;font-size:15px;font-weight:800;color:#181715;">
+              ${editando ? 'Editar producto' : 'Añadir producto'}
+            </div>
+            <div style="margin-top:4px;font-size:10px;color:#918b83;">
+              ${editando ? 'Modifica la información del producto' : 'Añade un nuevo producto al menú'}
+            </div>
+          </div>
+          <button id="admin-product-close" style="width:30px;height:30px;border:0;border-radius:6px;background:#f5f3ef;color:#6b6560;cursor:pointer;font-size:18px;">×</button>
+        </div>
+
+        <div style="padding:20px;">
+          <div style="margin-bottom:14px;">
+            <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:700;color:#625d56;text-transform:uppercase;">Nombre</label>
+            <input id="admin-product-name" type="text" value="${esc(producto?.name||'')}" placeholder="Ej. Lomo saltado"
+              style="width:100%;height:40px;padding:0 11px;box-sizing:border-box;border:1px solid #ddd9d2;border-radius:7px;outline:none;font-family:inherit;">
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:700;color:#625d56;text-transform:uppercase;">Categoría</label>
+            <input id="admin-product-category" type="text" value="${esc(producto?.category||'')}" placeholder="Ej. Platos"
+              style="width:100%;height:40px;padding:0 11px;box-sizing:border-box;border:1px solid #ddd9d2;border-radius:7px;outline:none;font-family:inherit;">
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:700;color:#625d56;text-transform:uppercase;">Precio</label>
+            <input id="admin-product-price" type="number" step="0.01" min="0" value="${producto?.price??''}" placeholder="0.00"
+              style="width:100%;height:40px;padding:0 11px;box-sizing:border-box;border:1px solid #ddd9d2;border-radius:7px;outline:none;font-family:inherit;">
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:700;color:#625d56;text-transform:uppercase;">Descripción</label>
+            <textarea id="admin-product-description" placeholder="Descripción del producto"
+              style="width:100%;min-height:80px;padding:10px 11px;box-sizing:border-box;border:1px solid #ddd9d2;border-radius:7px;outline:none;resize:vertical;font-family:inherit;"
+            >${esc(producto?.description||'')}</textarea>
+          </div>
+          <label style="display:flex;align-items:center;gap:9px;font-size:11px;color:#4e4943;cursor:pointer;margin-bottom:20px;">
+            <input id="admin-product-active" type="checkbox" ${producto?.active!==false?'checked':''}>
+            Producto disponible
+          </label>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button id="admin-product-cancel" style="height:38px;padding:0 15px;border:1px solid #ddd9d2;border-radius:7px;background:#fff;color:#6b6560;cursor:pointer;">Cancelar</button>
+            <button id="admin-product-save" style="height:38px;padding:0 17px;border:1px solid #1d1c1a;border-radius:7px;background:#1d1c1a;color:#fff;cursor:pointer;font-weight:700;">
+              ${editando ? 'Guardar cambios' : 'Añadir producto'}
+            </button>
+          </div>
+          <div id="admin-product-error" style="min-height:18px;margin-top:10px;color:#a9472f;font-size:11px;"></div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const cerrar = () => overlay.remove();
+    document.getElementById('admin-product-close').onclick  = cerrar;
+    document.getElementById('admin-product-cancel').onclick = cerrar;
+
+    document.getElementById('admin-product-save').onclick = async () => {
+      const name        = document.getElementById('admin-product-name').value.trim();
+      const category    = document.getElementById('admin-product-category').value.trim();
+      const price       = Number(document.getElementById('admin-product-price').value);
+      const description = document.getElementById('admin-product-description').value.trim();
+      const active      = document.getElementById('admin-product-active').checked;
+      const errorEl     = document.getElementById('admin-product-error');
+      const saveBtn     = document.getElementById('admin-product-save');
+
+      errorEl.textContent = '';
+      if(!name)                               { errorEl.textContent = 'El nombre es obligatorio.'; return; }
+      if(!category)                           { errorEl.textContent = 'La categoría es obligatoria.'; return; }
+      if(!Number.isFinite(price) || price < 0){ errorEl.textContent = 'Ingresa un precio válido.'; return; }
+
+      saveBtn.disabled    = true;
+      saveBtn.textContent = 'Guardando…';
+
+      const datos = { name, category, price, description, active };
+      const resultado = editando
+        ? await supabase.from('menu_items').update(datos).eq('id', producto.id)
+        : await supabase.from('menu_items').insert(datos);
+
+      if(resultado.error){
+        errorEl.textContent = resultado.error.message;
+        saveBtn.disabled    = false;
+        saveBtn.textContent = editando ? 'Guardar cambios' : 'Añadir producto';
+        return;
+      }
+
+      cerrar();
+      await cargarMenu();
+    };
   }
 
   /* Carga inicial */
