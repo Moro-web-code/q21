@@ -1674,3 +1674,117 @@ button{ font-family:inherit; cursor:pointer; border:none; }
 /* Mensaje de error inline */
 .error-msg{ background:rgba(193,80,46,.15); border:1px solid var(--rust); color:var(--rust); padding:10px 14px; border-radius:2px; font-size:12px; margin-top:12px; display:none; }
 .error-msg.visible{ display:block; }
+/* ============================================================
+   MESAS DINÁMICAS — estilos adicionales
+   Añadidos al final de styles.css. No modifican nada existente.
+   ============================================================ */
+
+/* Grid de tarjetas de mesas (panel admin) */
+.tables-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+/* Tarjeta individual de mesa */
+.table-mgmt-card {
+  background: #fff;
+  border: 1px solid #e8e4dc;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: box-shadow .15s;
+}
+.table-mgmt-card:hover {
+  box-shadow: 0 4px 18px rgba(0, 0, 0, .07);
+}
+
+/* Cabecera de la tarjeta */
+.tmc-head {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #f0ede8;
+}
+.tmc-num {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #f5f3ef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Archivo', sans-serif;
+  font-weight: 900;
+  font-size: 14px;
+  color: #1c1a17;
+  flex-shrink: 0;
+}
+.tmc-info { flex: 1; min-width: 0; }
+.tmc-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1c1a17;
+  font-family: 'Archivo', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tmc-id { font-size: 10px; color: #9e9890; margin-top: 1px; }
+
+/* Badge de estado */
+.tmc-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.tmc-badge.on  { background: #edf4ec; color: #4a6e48; }
+.tmc-badge.off { background: #f5f3ef; color: #9e9890; }
+
+/* Zona QR de la tarjeta */
+.tmc-qr {
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+  background: #fafaf8;
+  border-bottom: 1px solid #f0ede8;
+}
+.tmc-qr img { display: block; border-radius: 4px; }
+.tmc-qr-notoken {
+  font-size: 11px;
+  color: #9e9890;
+  padding: 20px 0;
+  text-align: center;
+}
+
+/* Acciones de la tarjeta */
+.tmc-actions {
+  padding: 12px 14px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tmc-btn {
+  flex: 1;
+  min-width: 70px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #e8e4dc;
+  background: #f5f3ef;
+  color: #6b6560;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+  transition: background .12s, border-color .12s;
+  white-space: nowrap;
+}
+.tmc-btn:hover       { border-color: #c8c4bc; color: #1c1a17; }
+.tmc-btn.primary     { background: var(--rust); color: #fff; border-color: var(--rust); }
+.tmc-btn.primary:hover { background: #c0502a; }
+.tmc-btn.danger      { color: var(--rust); border-color: #f0c4b4; background: #fdf1ed; }
+.tmc-btn.danger:hover  { background: #fae0d8; }
+.tmc-btn:disabled    { opacity: .5; cursor: not-allowed; }
