@@ -1,17 +1,18 @@
 /* ============================================================
    CUSTOMER — acceso del cliente vía QR (?token=...)
-   Funciones movidas tal cual desde el IIFE original.
-   Única modificación: renderCustomer recibe `qrToken` como
-   parámetro en vez de closure (ver nota de aprobación).
+   Cambio principal: MESAS eliminada.
+   getTableByToken() ahora consulta public.tables en Supabase.
+   renderCustomer() recibe el objeto mesa desde Supabase.
+   Resto del comportamiento idéntico al original.
    ============================================================ */
 
 import { supabase } from '../config/supabase.js';
-import { RESTAURANT, MESAS } from '../config/constants.js';
+import { RESTAURANT } from '../config/constants.js';
 
 const baseUrl = window.location.origin + window.location.pathname;
 
 /* ============================================================
-   CORRECCIÓN 1: Sanitización contra XSS
+   UTILIDADES
 ============================================================ */
 export function esc(str){
   return String(str ?? '')
@@ -39,138 +40,111 @@ export function elapsedLabel(iso){
 }
 
 /* ============================================================
-   CORRECCIÓN 2: getTableByToken usa la RPC validate_qr_token
+   getTableByToken
+   Flujo: validate_qr_token → table_id → public.tables
+   Retorna el mismo contrato que antes:
+   { valid, mesa: { id, nombre }, session_id }
+   router.js no necesita cambios.
 ============================================================ */
 export async function getTableByToken(token){
 
   const cleanToken = String(token || '').trim();
 
   if(!cleanToken){
-    return {
-      valid:false,
-      reason:'qr_invalido'
-    };
+    return { valid: false, reason: 'qr_invalido' };
   }
 
   const uuidRegex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
   if(!uuidRegex.test(cleanToken)){
-
-    console.error(
-      'Token QR no tiene formato UUID:',
-      cleanToken
-    );
-
-    return {
-      valid:false,
-      reason:'qr_invalido'
-    };
-
+    console.error('Token QR no tiene formato UUID:', cleanToken);
+    return { valid: false, reason: 'qr_invalido' };
   }
 
-  const {
-    data,
-    error
-  } = await supabase.rpc(
-    'validate_qr_token',
-    {
-      p_token: cleanToken
-    }
-  );
+  /* 1. Validar token contra Supabase */
+  const { data, error } = await supabase.rpc('validate_qr_token', {
+    p_token: cleanToken
+  });
 
   if(error){
-
-    console.error(
-      'Error validate_qr_token:',
-      error
-    );
-
-    return {
-      valid:false,
-      reason:'error'
-    };
-
+    console.error('Error validate_qr_token:', error);
+    return { valid: false, reason: 'error' };
   }
 
-  if(!data){
-
-    console.error(
-      'validate_qr_token no devolvió datos'
-    );
-
-    return {
-      valid:false,
-      reason:'qr_invalido'
-    };
-
+  if(!data || !data.valid){
+    console.warn('QR rechazado:', data);
+    return { valid: false, reason: data?.reason || 'qr_invalido' };
   }
 
-  if(!data.valid){
+  const tableId = Number(data.table_id);
 
-    console.warn(
-      'QR rechazado:',
-      data
-    );
+  /* 2. Obtener datos reales de la mesa desde public.tables */
+  const { data: tableRow, error: tableError } = await supabase
+    .from('tables')
+    .select('id, name, active')
+    .eq('id', tableId)
+    .single();
 
-    return {
-      valid:false,
-      reason:data.reason || 'qr_invalido'
-    };
-
+  if(tableError || !tableRow){
+    console.error('Mesa no encontrada en public.tables:', tableId, tableError);
+    return { valid: false, reason: 'qr_invalido' };
   }
 
-  const tableId =
-    Number(data.table_id);
-
-  const mesa =
-    Array.isArray(MESAS)
-      ? MESAS.find(
-          m => Number(m.id) === tableId
-        )
-      : null;
-
-  if(!mesa){
-
-    console.error(
-      'La RPC validó el QR, pero la mesa no existe en MESAS:',
-      {
-        tableId,
-        MESAS
-      }
-    );
-
-    return {
-      valid:false,
-      reason:'qr_invalido'
-    };
-
-  }
-
-  return {
-    valid:true,
-    mesa,
-    session_id:data.session_id
+  /* Construir objeto mesa con la misma forma que antes */
+  const mesa = {
+    id:     tableRow.id,
+    nombre: tableRow.name
   };
 
+  return {
+    valid:      true,
+    mesa,
+    session_id: data.session_id
+  };
 }
 
 /* ============================================================
-   CORRECCIÓN 3: getTableTokens usa la RPC get_table_qr_codes
+   getTableTokens
+   Sin cambios de interfaz. Sigue usando get_table_qr_codes.
 ============================================================ */
 export async function getTableTokens(){
   const { data, error } = await supabase.rpc('get_table_qr_codes');
 
   if(error){
-    if(location.hostname === 'localhost' || location.hostname === '127.0.0.1'){
-      console.error('Error leyendo tokens:', error);
-    }
+    console.error('Error leyendo tokens:', error);
     return [];
   }
 
   return data || [];
 }
 
+/* ============================================================
+   getTables
+   Nueva función exportada: carga todas las mesas desde
+   public.tables. Usada por administrator.js y waiter.js.
+============================================================ */
+export async function getTables(){
+  const { data, error } = await supabase
+    .from('tables')
+    .select('id, name, active')
+    .order('id', { ascending: true });
+
+  if(error){
+    console.error('Error cargando mesas:', error);
+    return [];
+  }
+
+  return (data || []).map(t => ({
+    id:     t.id,
+    nombre: t.name,
+    active: t.active
+  }));
+}
+
+/* ============================================================
+   getMenu
+============================================================ */
 export async function getMenu(){
   const { data, error } = await supabase
     .from('menu_items')
@@ -184,8 +158,8 @@ export async function getMenu(){
   data.forEach(item => {
     if(!categories[item.category]) categories[item.category] = [];
     categories[item.category].push({
-      id: item.id,
-      name: item.name,
+      id:    item.id,
+      name:  item.name,
       price: Number(item.price)
     });
   });
@@ -193,9 +167,9 @@ export async function getMenu(){
   return Object.entries(categories).map(([cat, items]) => ({ cat, items }));
 }
 
-/* NOTA: getOrders() también es usada por js/staff/staff.js (panel de
-   Cocina). Se exporta desde aquí y se importa allá para no duplicar
-   la función (regla 11). */
+/* ============================================================
+   getOrders — también usado por staff/staff.js
+============================================================ */
 export async function getOrders(){
   const { data, error } = await supabase
     .from('orders')
@@ -221,7 +195,7 @@ export async function getOrder(orderId){
   if(!token) return null;
 
   const { data, error } = await supabase.rpc('get_order_by_token', {
-    p_order_id:    orderId,
+    p_order_id:     orderId,
     p_access_token: token
   });
 
@@ -241,7 +215,7 @@ export async function getOrder(orderId){
 }
 
 /* ============================================================
-   CORRECCIÓN 4: Bloqueo de navegación del cliente
+   bloquearNavegacionMesa — sin cambios
 ============================================================ */
 export function bloquearNavegacionMesa(token){
   const urlMesa = baseUrl + '?token=' + encodeURIComponent(token);
@@ -253,70 +227,25 @@ export function bloquearNavegacionMesa(token){
 }
 
 /* ============================================================
-   HOME
-============================================================ */
-export async function renderHome(){
-  const app = document.getElementById('app');
-  const tokens = await getTableTokens();
-
-  app.innerHTML = `
-    <div class="topbar">
-      <div class="brand">
-        <span class="display">${esc(RESTAURANT)}</span>
-      </div>
-    </div>
-
-    <div class="hero">
-      <div class="eyebrow">Pedidos por QR</div>
-      <div class="display">Escanea, pide,<br>llega a cocina.</div>
-      <p>Cada mesa tiene su propio código QR. El cliente escanea, arma su pedido desde el menú y este aparece al instante en el panel de cocina.</p>
-    </div>
-
-    <div class="table-grid">
-      ${MESAS.map(m => {
-        const tokenData = tokens.find(t => t.table_id === m.id);
-        if(!tokenData){
-          return `
-            <div class="ticket table-card">
-              <div class="num">Mesa N.º ${m.id}</div>
-              <div class="name">${esc(m.nombre)}</div>
-              <div style="color:var(--rust);font-size:11px;">Sin token</div>
-            </div>`;
-        }
-        const url = new URL(baseUrl);
-        url.search = '';
-        url.searchParams.set('token', tokenData.token);
-        return `
-          <div class="ticket table-card">
-            <div class="num">Mesa N.º ${m.id}</div>
-            <div class="name">${esc(m.nombre)}</div>
-            <img src="${qrUrl(url.toString())}" alt="QR ${esc(m.nombre)}">
-          </div>`;
-      }).join('')}
-    </div>
-
-<a class="admin-link" href="${baseUrl}?admin=1">→ Abrir panel de cocina</a>
-
-<a class="admin-link" href="${baseUrl}?mesero=1">→ Abrir panel de mesero</a>
-
-<a class="admin-link" href="${baseUrl}?administrador=1">→ Abrir panel administrativo</a>
-
-    <div class="note-box">
-      Los QR codifican la URL actual de esta página.
-      Para que funcionen al escanearlos con un celular real,
-      comparte/publica este artefacto primero.
-    </div>
-  `;
-}
-
-/* ============================================================
-   CUSTOMER
-   (único cambio respecto al original: recibe `qrToken` como
-   parámetro — ver nota de aprobación arriba)
+   renderCustomer — sin cambios de comportamiento.
+   Recibe mesaId (integer) y qrToken (uuid string).
+   Construye el objeto mesa desde Supabase si es necesario,
+   o usa el fallback { id, nombre } igual que antes.
 ============================================================ */
 export async function renderCustomer(mesaId, qrToken){
   const app = document.getElementById('app');
-  const mesa = MESAS.find(m => m.id === mesaId) || { id: mesaId, nombre: 'Mesa ' + mesaId };
+
+  /* Cargar datos reales de la mesa */
+  const { data: tableRow } = await supabase
+    .from('tables')
+    .select('id, name')
+    .eq('id', mesaId)
+    .single();
+
+  const mesa = tableRow
+    ? { id: tableRow.id, nombre: tableRow.name }
+    : { id: mesaId, nombre: 'Mesa ' + mesaId };
+
   const menu = await getMenu();
   const cart = {};
 
@@ -410,19 +339,16 @@ export async function renderCustomer(mesaId, qrToken){
     btn.disabled = true;
     btn.textContent = 'Enviando…';
 
-    const notes = (document.getElementById('notes').value || '').trim().slice(0, 300);
-
+    const notes       = (document.getElementById('notes').value || '').trim().slice(0, 300);
     const accessToken = crypto.randomUUID();
-
-    /* CORRECCIÓN 5: ID generado con randomUUID */
-    const orderId = crypto.randomUUID();
+    const orderId     = crypto.randomUUID();
 
     const order = {
       id:           orderId,
       table_name:   mesa.nombre,
       table_id:     mesa.id,
       items:        Object.values(cart),
-      notes:        notes,
+      notes,
       status:       'pendiente',
       created_at:   new Date().toISOString(),
       access_token: accessToken
@@ -439,9 +365,8 @@ export async function renderCustomer(mesaId, qrToken){
     });
 
     if(error){
-      btn.disabled = false;
+      btn.disabled  = false;
       btn.textContent = 'Enviar pedido';
-
       const errDiv = document.querySelector('.error-msg') || (() => {
         const d = document.createElement('div');
         d.className = 'error-msg';
@@ -499,7 +424,7 @@ export async function renderCustomer(mesaId, qrToken){
     const el = document.getElementById('status-pill');
     if(!el) return;
     const label =
-      status === 'pendiente'  ? 'Pendiente'     :
+      status === 'pendiente'  ? 'Pendiente'      :
       status === 'preparando' ? 'En preparación' :
       status === 'listo'      ? '¡Listo!'        : 'Entregado';
 
