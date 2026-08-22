@@ -9,7 +9,7 @@
    ============================================================ */
 
 import { supabase } from '../config/supabase.js';
-import { RESTAURANT, MESAS } from '../config/constants.js';
+import { RESTAURANT } from '../config/constants.js';
 import { esc } from '../customer/customer.js';
 import { renderLoginUnificado } from '../auth/login.js';
 import { renderAdministrador } from '../admin/administrator.js';
