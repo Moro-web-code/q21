@@ -417,6 +417,19 @@ const addBtnLabels = {
     if(key === 'menu')    await cargarMenu();
     if(key === 'mesas')   await cargarMesas();
     if(key === 'qr')      await cargarQR();
+    if(key === 'mapa')    bindMapaPage();
+  }
+
+  function bindMapaPage(){
+    const btn = document.getElementById('adash-open-editor');
+    if(!btn || btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener('click', () => {
+      openMapEditor(app, () => {
+        /* Al cerrar el editor, volver al admin */
+        renderAdministrador();
+      });
+    });
   }
 
   /* ══════════════════════════════════════════════════════════
