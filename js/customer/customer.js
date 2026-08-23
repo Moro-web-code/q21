@@ -2342,11 +2342,12 @@ export async function renderCustomer(
   const menu =
     await getMenu();
 
-  const cart = {};
+const cart = {};
 
-  let activeCat =
-    'todos';
+let activeCat =
+  'todos';
 
+let customerNotes = '';
 
   /* ==========================================================
      CART
