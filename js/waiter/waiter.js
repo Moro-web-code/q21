@@ -397,11 +397,10 @@ export async function renderMesero(){
      mesasActuales reemplaza MESAS — se recarga en cada
      cargarDatos() para reflejar altas/bajas sin recargar la página.
   ============================================================ */
-  let mesasActuales    = [];   // { id, nombre, active }
-  let posicionesActuales = {}; // { [id]: { x, y } }
-  let datosActuales    = { sesiones:[], pedidos:[] };
-  let mesaSeleccionada = null;
-
+  let mesasActuales     = [];
+  let elementosActuales = [];
+  let datosActuales     = { sesiones:[], pedidos:[] };
+  let mesaSeleccionada  = null;
   /* ── Cargar datos ── */
   async function cargarDatos(){
     const [
