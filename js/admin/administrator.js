@@ -10,6 +10,7 @@
 import { supabase }   from '../config/supabase.js';
 import { RESTAURANT } from '../config/constants.js';
 import { esc, getTableTokens, getTables } from '../customer/customer.js';
+import { openMapEditor } from './map-editor.js';
 import { renderAdministradorLogin } from '../auth/login.js';
 
 const baseUrl = window.location.origin + window.location.pathname;
