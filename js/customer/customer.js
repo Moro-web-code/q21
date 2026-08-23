@@ -2392,7 +2392,12 @@ let customerNotes = '';
   ========================================================== */
 
   function draw(){
+   const currentNotes =
+  document.getElementById('notes')?.value;
 
+if(currentNotes !== undefined){
+  customerNotes = currentNotes;
+}
     const visibleMenu =
       activeCat === 'todos'
         ? menu
