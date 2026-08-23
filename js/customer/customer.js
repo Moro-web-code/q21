@@ -127,7 +127,7 @@ export async function getTableTokens(){
 export async function getTables(){
   const { data, error } = await supabase
     .from('tables')
-    .select('id, name, active')
+    .select('id, name, active, position_x, position_y, width, height, rotation, shape')
     .order('id', { ascending: true });
 
   if(error){
@@ -136,10 +136,30 @@ export async function getTables(){
   }
 
   return (data || []).map(t => ({
-    id:     t.id,
-    nombre: t.name,
-    active: t.active
+    id:         t.id,
+    nombre:     t.name,
+    active:     t.active,
+    position_x: t.position_x ?? 20,
+    position_y: t.position_y ?? 20,
+    width:      t.width      ?? 8,
+    height:     t.height     ?? 8,
+    rotation:   t.rotation   ?? 0,
+    shape:      t.shape      ?? 'round',
   }));
+}
+
+export async function getMapElements(){
+  const { data, error } = await supabase
+    .from('map_elements')
+    .select('id, type, label, position_x, position_y, width, height, rotation')
+    .order('id');
+
+  if(error){
+    console.error('Error cargando elementos del mapa:', error);
+    return [];
+  }
+
+  return data || [];
 }
 
 /* ============================================================
