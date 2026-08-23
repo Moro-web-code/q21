@@ -13,7 +13,7 @@
 
 import { supabase }   from '../config/supabase.js';
 import { RESTAURANT } from '../config/constants.js';
-import { esc, getTables } from '../customer/customer.js';
+import { esc, getTables, getMapElements } from '../customer/customer.js';
 import { renderMeseroLogin } from '../auth/login.js';
 
 /* ============================================================
