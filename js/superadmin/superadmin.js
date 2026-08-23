@@ -2356,12 +2356,10 @@ const mesasActivas =
       );
 
 
-      set(
-        'sa-s-mesas',
-        Array.isArray(MESAS)
-          ? `${mesasActivas} / ${MESAS.length}`
-          : mesasActivas
-      );
+set(
+  'sa-s-mesas',
+  mesasActivas
+);
 
 
       set(
