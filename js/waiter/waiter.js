@@ -452,22 +452,51 @@ export async function renderMesero(){
 
   /* ── Dibujar mapa ── */
   function dibujarMapa(){
+    /* Dibujar elementos estructurales desde Supabase */
+    const zonasEl = document.getElementById('mv-zonas-container');
+    if(zonasEl){
+      zonasEl.innerHTML = elementosActuales.map(el => `
+        <div class="mv-zona" style="
+          left:${el.position_x}%;
+          top:${el.position_y}%;
+          width:${el.width}%;
+          height:${el.height}%;
+          transform:translate(-50%,-50%) rotate(${el.rotation || 0}deg);
+        ">
+          ${esc(el.label || el.type)}
+        </div>`).join('');
+    }
+
+    /* Dibujar mesas desde Supabase */
     const nodesEl = document.getElementById('mv-mesas-nodes');
     if(!nodesEl) return;
 
     nodesEl.innerHTML = mesasActuales.map(mesa => {
-      const pos        = posicionesActuales[mesa.id] || { x:50, y:50 };
       const { estado, pendientes } = estadoMesa(mesa);
       const isSelected = mesaSeleccionada === mesa.id;
-
-      const subTxt = estado === 'libre'    ? 'Libre'
-                   : estado === 'pendiente'? 'Pendiente'
+      const subTxt = estado === 'libre'     ? 'Libre'
+                   : estado === 'pendiente' ? 'Pendiente'
                    : 'Activa';
+
+      /* Forma visual de la mesa */
+      const borderRadius = mesa.shape === 'round' ? '50%'
+                         : mesa.shape === 'square' ? '6px'
+                         : '4px';
 
       return `
         <div class="mv-mesa-node" data-mesa-id="${mesa.id}"
-          style="left:${pos.x}%;top:${pos.y}%;">
-          <div class="mv-mesa-circle ${estado}${isSelected?' selected':''}">
+          style="
+            left:${mesa.position_x}%;
+            top:${mesa.position_y}%;
+            width:${mesa.width * 7}px;
+            height:${mesa.height * 7}px;
+            transform:translate(-50%,-50%) rotate(${mesa.rotation || 0}deg);
+          ">
+          <div class="mv-mesa-circle ${estado}${isSelected ? ' selected' : ''}"
+            style="
+              width:100%; height:100%;
+              border-radius:${borderRadius};
+            ">
             ${pendientes > 0
               ? `<div class="mv-mesa-badge">${pendientes}</div>`
               : ''}
