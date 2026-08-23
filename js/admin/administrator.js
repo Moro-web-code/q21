@@ -408,6 +408,9 @@ const addBtnLabels = {
   document.getElementById('adash-add-btn').onclick = () => {
     if(paginaActual === 'menu')  abrirModalProducto();
     if(paginaActual === 'mesas') abrirModalMesa();
+    if(paginaActual === 'mapa'){
+      openMapEditor(app, () => { renderAdministrador(); });
+    }
   };
 
   /* ── Carga por página ── */
