@@ -3407,11 +3407,22 @@ const o =
     orderId
   );
 
-console.log('KDS CLIENTE — estado recibido:', o);
+console.log(
+  'CLIENTE - pedido:',
+  orderId,
+  'respuesta:',
+  o
+);
 
 if(!o){
+  console.log('CLIENTE - getOrder devolvió null');
   return;
 }
+
+console.log(
+  'CLIENTE - estado recibido:',
+  o.status
+);
 
 
           if(
