@@ -2645,12 +2645,12 @@ if(currentNotes !== undefined){
               Puedes dejar una nota para cocina.
             </div>
 
-            <textarea
-              id="notes"
-              class="notes-field"
-              placeholder="Ej.: sin cebolla, poco picante..."
-              maxlength="300"
-            ></textarea>
+<textarea
+  id="notes"
+  class="notes-field"
+  placeholder="Ej.: sin cebolla, poco picante..."
+  maxlength="300"
+>${esc(customerNotes)}</textarea>
 
           </section>
 
