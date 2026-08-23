@@ -321,10 +321,7 @@ export async function renderMesero(){
 
           <!-- MAPA VISUAL -->
           <div class="mv-mapa-canvas" id="mv-mapa-canvas">
-            ${ZONAS.map(z => `
-              <div class="mv-zona" style="left:${z.left};top:${z.top};width:${z.width};height:${z.height};">
-                ${z.label}
-              </div>`).join('')}
+            <div id="mv-zonas-container"></div>
             <div id="mv-mesas-nodes"></div>
           </div>
 
