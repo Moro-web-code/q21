@@ -2300,15 +2300,18 @@ const goMesero = async () => {
         orders || [];
 
 
-      const mesasActivas =
-        Array.isArray(MESAS)
-          ? MESAS.filter(m =>
-              sess.find(s =>
-                Number(s.table_id) === Number(m.id) &&
-                s.status === 'active'
-              )
-            ).length
-          : 0;
+const tableIds = [
+  ...new Set(
+    sess
+      .map(s => Number(s.table_id))
+      .filter(Number.isFinite)
+  )
+];
+
+const mesasActivas =
+  sess.filter(
+    s => s.status === 'active'
+  ).length;
 
 
       const ventas =
