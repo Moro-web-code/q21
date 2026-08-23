@@ -281,23 +281,8 @@ export async function renderMesero(){
      Cada nueva mesa ocupa la siguiente celda del grid.
      Funciona para cualquier número de mesas sin hardcodear.
   ============================================================ */
-  function calcularPosiciones(mesas){
-    const cols   = 2;
-    const startX = 14;   // % desde la izquierda
-    const startY = 18;   // % desde arriba
-    const stepX  = 26;   // % entre columnas
-    const stepY  = 22;   // % entre filas
-
-    return mesas.reduce((pos, mesa, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      pos[mesa.id] = {
-        x: startX + col * stepX,
-        y: startY + row * stepY
-      };
-      return pos;
-    }, {});
-  }
+  /* Las posiciones vienen directamente de Supabase (position_x, position_y).
+     Esta función ya no es necesaria. */
 
   /* Zonas decorativas del restaurante — estáticas */
   const ZONAS = [
