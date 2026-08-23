@@ -349,8 +349,11 @@ export async function renderAdministrador(){
   qr:     'Códigos QR',
   mapa:   'Mapa del restaurante'
 };
-  const addBtnLabels = { menu:'+ Añadir producto', mesas:'+ Nueva mesa' };
-
+const addBtnLabels = {
+  menu:  '+ Añadir producto',
+  mesas: '+ Nueva mesa',
+  mapa:  'Diseñar mapa'
+};
   document.querySelectorAll('.sb-item[data-adash]').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.adash;
