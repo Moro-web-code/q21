@@ -3402,16 +3402,16 @@ export async function renderCustomer(
 
           }
 
+const o =
+  await getOrder(
+    orderId
+  );
 
-          const o =
-            await getOrder(
-              orderId
-            );
+console.log('KDS CLIENTE — estado recibido:', o);
 
-
-          if(!o){
-            return;
-          }
+if(!o){
+  return;
+}
 
 
           if(
