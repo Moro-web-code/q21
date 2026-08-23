@@ -405,10 +405,12 @@ export async function renderMesero(){
   async function cargarDatos(){
     const [
       mesas,
+      elementos,
       { data: sesiones },
       { data: pedidos }
     ] = await Promise.all([
       getTables(),
+      getMapElements(),
       supabase.rpc('get_table_sessions'),
       supabase
         .from('orders')
@@ -416,11 +418,9 @@ export async function renderMesero(){
         .in('status', ['pendiente','preparando','listo'])
     ]);
 
-    /* Solo mesas activas en el panel del mesero.
-       Las inactivas no tienen sesión ni QR funcional. */
     mesasActuales     = mesas.filter(m => m.active);
-    posicionesActuales = calcularPosiciones(mesasActuales);
-    datosActuales      = { sesiones: sesiones||[], pedidos: pedidos||[] };
+    elementosActuales = elementos;
+    datosActuales     = { sesiones: sesiones||[], pedidos: pedidos||[] };
 
     dibujarMapa();
     dibujarGrid();
