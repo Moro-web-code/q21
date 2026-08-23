@@ -285,12 +285,7 @@ export async function renderMesero(){
      Esta función ya no es necesaria. */
 
   /* Zonas decorativas del restaurante — estáticas */
-  const ZONAS = [
-    { label:'Barra',   left:'70%', top:'12%', width:'22%', height:'16%' },
-    { label:'Caja',    left:'70%', top:'38%', width:'22%', height:'14%' },
-    { label:'Cocina',  left:'70%', top:'62%', width:'22%', height:'22%' },
-    { label:'Entrada', left:'2%',  top:'88%', width:'18%', height:'10%' },
-  ];
+  /* Las zonas ahora vienen de public.map_elements via Supabase. */
 
   app.innerHTML = `
     <div id="mv-layout">
