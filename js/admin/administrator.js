@@ -738,8 +738,7 @@ export async function renderAdministrador(){
         btn.disabled    = true;
         btn.textContent = '…';
         const { data, error } = await supabase.rpc('regenerate_table_token', {
-  p_table_id: id,
-  p_user_id: userId
+  p_table_id: id
 });
         if(error || !data?.success){
           alert('No se pudo regenerar.\n\n' + (error?.message || data?.error || ''));
