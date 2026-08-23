@@ -59,7 +59,12 @@ export async function renderStaff(){
       .kds-cards::-webkit-scrollbar{ width:3px; }
       .kds-cards::-webkit-scrollbar-thumb{ background:#2e2b25; border-radius:3px; }
 
-      .kds-card{ background:#1a1814; border:1px solid #2e2b25; border-radius:10px; padding:16px 16px 14px; animation:kds-in .2s ease; }
+      .kds-card{
+  background:#1a1814;
+  border:1px solid #2e2b25;
+  border-radius:10px;
+  padding:16px 16px 14px;
+}
       @keyframes kds-in{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
       .kds-card.estado-pendiente{ border-left:3px solid #c49520; }
       .kds-card.estado-preparando{ border-left:3px solid #c1502e; }
