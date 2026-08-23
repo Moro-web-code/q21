@@ -341,13 +341,14 @@ export async function renderAdministrador(){
 
   /* Navegación */
   let paginaActual = 'inicio';
-  const titulos    = {
-    inicio: 'Inicio',
-    pedidos:'Pedidos',
-    menu:   'Menú',
-    mesas:  'Mesas',
-    qr:     'Códigos QR'
-  };
+   const titulos = {
+  inicio: 'Inicio',
+  pedidos:'Pedidos',
+  menu:   'Menú',
+  mesas:  'Mesas',
+  qr:     'Códigos QR',
+  mapa:   'Mapa del restaurante'
+};
   const addBtnLabels = { menu:'+ Añadir producto', mesas:'+ Nueva mesa' };
 
   document.querySelectorAll('.sb-item[data-adash]').forEach(btn => {
