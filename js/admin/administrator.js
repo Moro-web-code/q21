@@ -209,12 +209,15 @@ export async function renderAdministrador(){
             <i class="ti ti-bowl"></i> Menú
           </button>
           <div class="sb-section">Configuración</div>
-          <button class="sb-item" data-adash="mesas">
-            <i class="ti ti-armchair"></i> Mesas
-          </button>
-          <button class="sb-item" data-adash="qr">
-            <i class="ti ti-qrcode"></i> Códigos QR
-          </button>
+<button class="sb-item" data-adash="mesas">
+  <i class="ti ti-armchair"></i> Mesas
+</button>
+<button class="sb-item" data-adash="qr">
+  <i class="ti ti-qrcode"></i> Códigos QR
+</button>
+<button class="sb-item" data-adash="mapa">
+  <i class="ti ti-layout-board"></i> Mapa
+</button>
         </nav>
         <div class="sb-footer">
           <div class="sb-user">
