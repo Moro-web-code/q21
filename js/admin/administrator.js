@@ -844,7 +844,8 @@ export async function renderAdministrador(){
       } else {
         /* Crear mesa + token QR via RPC */
         const { data, error } = await supabase.rpc('create_table_with_token', {
-  p_name: name
+  p_name: name,
+  p_user_id: userId
 });
 
         if(error || !data?.success){
