@@ -315,6 +315,24 @@ export async function renderAdministrador(){
             <div class="qr-grid-dash" id="adash-qr-grid"><div class="dash-loading">Cargando…</div></div>
           </div>
 
+          <!-- MAPA -->
+          <div class="adash-page" id="adash-mapa">
+            <div class="page-header">
+              <div>
+                <div class="ph-title">Mapa</div>
+                <div class="ph-sub">Diseño visual del restaurante</div>
+              </div>
+            </div>
+            <div id="adash-mapa-content">
+              <p style="font-size:13px;color:#9e9890;margin-bottom:20px;">
+                Diseña la distribución del restaurante arrastrando mesas y elementos.
+              </p>
+              <button class="atb-btn primary" id="adash-open-editor" style="width:fit-content;">
+                ✏ Abrir diseñador
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
