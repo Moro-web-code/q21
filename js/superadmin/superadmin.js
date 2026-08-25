@@ -1898,11 +1898,18 @@ const goMesero = async () => {
      NAVEGACIÓN
   ============================================================ */
   const saTitulos = {
-    inicio:'Centro de control',
-    usuarios:'Usuarios',
-    permisos:'Roles y permisos',
-    actividad:'Actividad reciente',
-    accesos:'Paneles del sistema'
+    inicio:        'Centro de control',
+    usuarios:      'Usuarios',
+    permisos:      'Roles y permisos',
+    actividad:     'Actividad reciente',
+    accesos:       'Paneles del sistema',
+    diagnostico:   'Diagnóstico del sistema',
+    errores:       'Errores del sistema',
+    monitoreo:     'Monitoreo de pedidos',
+    auditoria:     'Auditoría',
+    incidentes:    'Incidentes',
+    recuperacion:  'Recuperación',
+    mantenimiento: 'Mantenimiento',
   };
 
 
