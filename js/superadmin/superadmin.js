@@ -1528,8 +1528,29 @@ app.innerHTML = `
             </div>
 
           </div>
+                   <!-- DIAGNÓSTICO -->
+          <div class="sa-page" id="sapage-diagnostico"></div>
+
+          <!-- ERRORES -->
+          <div class="sa-page" id="sapage-errores"></div>
+
+          <!-- MONITOREO -->
+          <div class="sa-page" id="sapage-monitoreo"></div>
+
+          <!-- AUDITORÍA -->
+          <div class="sa-page" id="sapage-auditoria"></div>
+
+          <!-- INCIDENTES -->
+          <div class="sa-page" id="sapage-incidentes"></div>
+
+          <!-- RECUPERACIÓN -->
+          <div class="sa-page" id="sapage-recuperacion"></div>
+
+          <!-- MANTENIMIENTO -->
+          <div class="sa-page" id="sapage-mantenimiento"></div>
 
         </div>
+
       </div>
     </div>
 
