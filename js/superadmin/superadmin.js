@@ -1970,18 +1970,39 @@ const goMesero = async () => {
           key === 'usuarios' ? 'flex' : 'none';
 
 
-        if(key === 'inicio'){
-          await cargarInicio();
-        }
+        if(key === 'inicio')    await cargarInicio();
+        if(key === 'usuarios')  await cargarUsuarios();
+        if(key === 'actividad') await cargarActividad();
 
-        if(key === 'usuarios'){
-          await cargarUsuarios();
+        /* ── Páginas del módulo de diagnóstico ── */
+        if(key === 'diagnostico'){
+          page.innerHTML = renderDiagnosticoPage();
+          await bindDiagnostico();
         }
-
-        if(key === 'actividad'){
-          await cargarActividad();
+        if(key === 'errores'){
+          page.innerHTML = renderErroresPage();
+          await bindErrores();
         }
-
+        if(key === 'monitoreo'){
+          page.innerHTML = renderMonitoreoPage();
+          await bindMonitoreo();
+        }
+        if(key === 'auditoria'){
+          page.innerHTML = renderAuditoriaPage();
+          await bindAuditoria();
+        }
+        if(key === 'incidentes'){
+          page.innerHTML = renderIncidentesPage();
+          await bindIncidentes();
+        }
+        if(key === 'recuperacion'){
+          page.innerHTML = renderRecuperacionPage();
+          await bindRecuperacion();
+        }
+        if(key === 'mantenimiento'){
+          page.innerHTML = renderMantenimientoPage();
+          await bindMantenimiento();
+        }
       });
 
     });
