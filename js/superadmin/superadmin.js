@@ -13,6 +13,16 @@ import { RESTAURANT } from '../config/constants.js';
 import { esc } from '../customer/customer.js';
 import { renderLoginUnificado } from '../auth/login.js';
 import { renderAdministrador } from '../admin/administrator.js';
+import {
+  injectDiagnosticsStyles,
+  renderDiagnosticoPage,   bindDiagnostico,
+  renderErroresPage,       bindErrores,
+  renderMonitoreoPage,     bindMonitoreo,
+  renderAuditoriaPage,     bindAuditoria,
+  renderMantenimientoPage, bindMantenimiento,
+  renderRecuperacionPage,  bindRecuperacion,
+  renderIncidentesPage,    bindIncidentes,
+} from './sa-diagnostics.js';
 import { renderStaff } from '../staff/staff.js';
 import { renderMesero } from '../waiter/waiter.js';
 
