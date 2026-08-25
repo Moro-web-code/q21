@@ -1004,6 +1004,53 @@ app.innerHTML = `
 
           <div class="sa-nav-divider"></div>
 
+          <div class="sa-nav-section">Sistema</div>
+
+          <button class="sa-nav-item" data-sapage="diagnostico">
+            <i class="ti ti-heart-rate-monitor" aria-hidden="true"></i>
+            <span>Diagnóstico</span>
+          </button>
+
+          <button class="sa-nav-item" data-sapage="errores">
+            <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+            <span>Errores</span>
+          </button>
+
+          <button class="sa-nav-item" data-sapage="monitoreo">
+            <i class="ti ti-clock" aria-hidden="true"></i>
+            <span>Monitoreo</span>
+          </button>
+
+          <div class="sa-nav-divider"></div>
+
+          <div class="sa-nav-section">Seguridad</div>
+
+          <button class="sa-nav-item" data-sapage="auditoria">
+            <i class="ti ti-file-description" aria-hidden="true"></i>
+            <span>Auditoría</span>
+          </button>
+
+          <button class="sa-nav-item" data-sapage="incidentes">
+            <i class="ti ti-bug" aria-hidden="true"></i>
+            <span>Incidentes</span>
+          </button>
+
+          <div class="sa-nav-divider"></div>
+
+          <div class="sa-nav-section">Operaciones</div>
+
+          <button class="sa-nav-item" data-sapage="recuperacion">
+            <i class="ti ti-tool" aria-hidden="true"></i>
+            <span>Recuperación</span>
+          </button>
+
+          <button class="sa-nav-item" data-sapage="mantenimiento">
+            <i class="ti ti-settings" aria-hidden="true"></i>
+            <span>Mantenimiento</span>
+          </button>
+
+          <div class="sa-nav-divider"></div>
+
           <div class="sa-nav-section">Accesos</div>
 
           <button class="sa-nav-item" data-sapage="accesos">
