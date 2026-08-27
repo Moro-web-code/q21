@@ -3495,6 +3495,57 @@ console.log(
 
 
   /* ============================================================
+     RECUPERAR PEDIDOS ACTIVOS
+     Si el cliente cerró el navegador y volvió a escanear el
+     mismo QR, buscamos pedidos pendientes de esta mesa en
+     localStorage. Si hay alguno que no fue entregado,
+     mostramos su estado directamente.
+  ============================================================ */
+
+  const storageKey = 'active_orders_' + mesa.id;
+  const savedOrderIds = JSON.parse(
+    localStorage.getItem(storageKey) || '[]'
+  );
+
+  if(savedOrderIds.length > 0){
+
+    /* Buscar el pedido más reciente que aún no fue entregado */
+    let pedidoRecuperado = null;
+
+    for(let i = savedOrderIds.length - 1; i >= 0; i--){
+      const savedId = savedOrderIds[i];
+      const savedOrder = await getOrder(savedId);
+
+      if(savedOrder && savedOrder.status !== 'entregado'){
+        pedidoRecuperado = savedOrder;
+        break;
+      } else {
+        /* Limpiar pedidos ya entregados o no encontrados */
+        localStorage.removeItem('order_token_' + savedId);
+      }
+    }
+
+    if(pedidoRecuperado){
+      /* Mostrar el estado del pedido recuperado directamente */
+      renderConfirm({
+        id:         pedidoRecuperado.id,
+        table_name: mesa.nombre,
+        table_id:   mesa.id,
+        items:      pedidoRecuperado.items,
+        total:      pedidoRecuperado.total,
+        notes:      pedidoRecuperado.notes,
+        status:     pedidoRecuperado.status,
+        created_at: pedidoRecuperado.createdAt,
+      });
+      return;
+    } else {
+      /* Todos los pedidos guardados ya fueron entregados */
+      localStorage.removeItem(storageKey);
+    }
+
+  }
+
+  /* ============================================================
      INICIAR
   ============================================================ */
 
