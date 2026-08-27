@@ -2997,6 +2997,17 @@ if(currentNotes !== undefined){
       accessToken
     );
 
+    /* Guardar referencia del pedido en la lista de pedidos
+       activos de esta mesa. Se usa una lista para soportar
+       múltiples pedidos en la misma sesión. */
+    const storageKey = 'active_orders_' + mesa.id;
+    const existing = JSON.parse(
+      localStorage.getItem(storageKey) || '[]'
+    );
+    if(!existing.includes(order.id)){
+      existing.push(order.id);
+      localStorage.setItem(storageKey, JSON.stringify(existing));
+    }
 
     renderConfirm({
 
@@ -3009,9 +3020,8 @@ if(currentNotes !== undefined){
         data.items
 
     });
-
   }
-
+   
 
   /* ============================================================
      RENDER CONFIRM
