@@ -3461,6 +3461,26 @@ console.log(
             'entregado'
           ){
 
+            /* Eliminar este pedido de la lista de activos
+               ahora que fue entregado */
+            const storageKey = 'active_orders_' + mesa.id;
+            const remaining = JSON.parse(
+              localStorage.getItem(storageKey) || '[]'
+            ).filter(id => id !== orderId);
+
+            if(remaining.length > 0){
+              localStorage.setItem(
+                storageKey,
+                JSON.stringify(remaining)
+              );
+            } else {
+              localStorage.removeItem(storageKey);
+            }
+
+            localStorage.removeItem(
+              'order_token_' + orderId
+            );
+
             clearInterval(
               interval
             );
